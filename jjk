@@ -143,7 +143,8 @@ rsdrive || \"restic-drive\". Does restic backup on Portable Storage Device.\n
 rssync || \"sync-restic-repo\". Sync online restic repo to local-pc restic repo.\n
 rsrestore || \"restore-restic-git\". Restore single/all restic and git repository.\n
 gist || \"gist\". GitHub-Gist management script.\n
-note || \"pnote\". Project's markdown-note management script.\n
+note || \"pjnote\". Project's markdown-note management script.\n
+todo || \"pjtodo\". Project's ToDo management script.\n
 dbsync || \"db-sync\". Sync database between online and local-pc in bi-directional way.\n
 dbackup || \"dbackup\". Backup database structure, data, full-db for git commit.\n
 pcsync || Sync data among pc, mobile and storage.\n
@@ -164,6 +165,7 @@ fi
 
 declare -a DOWNLOAD_ID_COLL # ID collection of Downloads, to use with for-loop. "-a"=Indexed_Array
 declare -a DEVICE_ID_COLL # ID collection of Devices, to use with for-loop. "-a"=Indexed_Array
+declare -a PROJECT_ID_COLL # ID collection of Projects, to use with for-loop. "-a"=Indexed_Array
 declare -a TASK_ID_COLL # ID collection of Tasks, to use with for-loop. "-a"=Indexed_Array
 declare -A restic_repo_list # "-A"=Associative_Array
 declare -A git_repo_list
@@ -171,7 +173,7 @@ declare -A all_repo_list
 declare -A note_repo_list
 declare -A download_list
 
-repo_file_path="/c/ProgramData/restic-git/restic-git-sync"
+repo_file_path="/c/ProgramData/snb/backup-n-sync-config"
 repo_json_file="${repo_file_path}/repository-list.json"
 source "${repo_file_path}/sync-gapps-url"
 
@@ -2440,7 +2442,7 @@ fi
 #----------------------------END-SCRIPT: gist----------------------------
 
 
-#----------------------------START-SCRIPT: pnote----------------------------
+#----------------------------START-SCRIPT: pjnote----------------------------
 
 pjnote_help_text="create || Create new note.\n
 open || Open existing note.\n
@@ -2846,7 +2848,199 @@ then
   fi
   exit
 fi
-#----------------------------END-SCRIPT: pnote----------------------------
+#----------------------------END-SCRIPT: pjnote----------------------------
+
+#----------------------------START-SCRIPT: pjtodo----------------------------
+
+pjtodo_help_text="project || Project management for todo.\n
+todo || ToDo list management.\n
+attachment || Attachment management for todo.\n
+comment || Comment management for todo."
+
+pjtodo_project_help="view || View project list.\n
+add || Add new project.\n
+edit || Edit existing project.\n
+delete || Delete existing project."
+
+pjtodo_todo_help="view || View todo list.\n
+add || Add new todo.\n
+edit || Edit existing todo.\n
+delete || Delete existing todo."
+
+pjtodo_attachment_help="view || View attachment list.\n
+add || Add new attachment.\n
+edit || Edit existing attachment.\n
+delete || Delete existing attachment."
+
+pjtodo_comment_help="view || View comment list.\n
+add || Add new comment.\n
+edit || Edit existing comment.\n
+delete || Delete existing comment."
+
+function store_project_pjtodo() {
+    all_project_string=""
+    if [[ "$OSTYPE" == 'msys' ]]
+    then
+        echo "Fetching Project List..."
+        get_project_list=$(curl -L -H --silent --no-progress-meter -d '' "${gapps_url}?action=read&table=Project")
+    else
+        get_project_list=$(gum spin --spinner dot --title "Fetching Project List..." --show-output -- curl -L -H --silent --no-progress-meter -d '' "${gapps_url}?action=read&table=Project")
+    fi
+    get_project_list=$(escape_single_quote "${get_project_list}")
+    get_project_store="${get_project_list}"
+    # echo "${get_project_list}" >> "${repo_file_path}/test_project.txt"
+
+    get_project_array=$(echo "${get_project_list}" | jq -r '.data|map("
+all_project_array['\''\(.id),id'\'']='\''\(.id)'\'';
+all_project_array['\''\(.id),project_name'\'']='\''\(.project_name)'\'';
+all_project_array['\''\(.id),path'\'']='\''\(.path)'\'';
+all_project_array['\''\(.id),about'\'']='\''\(.about)'\'';
+PROJECT_ID_COLL+=('\''\(.id)'\'');
+all_project_string+=\"\(.id)\\t\(.project_name)\\t\(.path)\\n\";
+")|.[]')
+    eval "${get_project_array}"
+    all_project_string=${all_project_string%??} 
+}
+
+function project_view_pjtodo() {
+    store_project_pjtodo
+    filtered_project_string=$(echo -e ${all_project_string} | gum filter --indicator=">" --header="Select Project To Edit: ID | Project Name | Path")
+    filtered_project_array=(${filtered_project_string})
+    filtered_id=${filtered_project_array[0]}
+    project_id_get=${all_project_array["${filtered_id},id"]}
+    project_name_get=${all_project_array["${filtered_id},project_name"]}
+    path_get=${all_project_array["${filtered_id},path"]}
+    about_get=${all_project_array["${filtered_id},about"]}
+    echo "Project Details ->"
+    project_show="KEY\tVALUE\n"
+    project_show+="ID\t${project_id_get}\n"
+    project_show+="Project Name\t${project_name_get}\n"
+    project_show+="Project Path\t${path_get}\n"
+    project_show+="About Project\t${about_get}\n"
+    printf "${project_show}" | prettytable 2
+}
+
+function project_add_pjtodo() {
+    echo "Add Project ->"
+    project_name_input=$(escapejc "$(gum input --header="Enter Project Name" --placeholder="Write Project Name")")
+    path_input=$(escapejc "$(gum input --header="Enter Project Path" --placeholder="Write Project Path")")
+    about_input=$(escapejc "$(gum write --header="Enter About Project" --placeholder="Write About Project")")
+
+    insert_feedback=$(gum spin --spinner dot --title "Adding Project..." --show-output -- curl -L -H "application/json" --silent --no-progress-meter --form "data=\"{\\\"project_name\\\":\\\"${project_name_input}\\\", \\\"path\\\": \\\"${path_input}\\\", \\\"about\\\":\\\"${about_input}\\\"}\"" "${gapps_url}?action=insert&table=Project")
+    echo "${insert_feedback}" | jq
+}
+
+function project_edit_pjtodo() {
+    store_project_pjtodo
+    filtered_project_string=$(echo -e ${all_project_string} | gum filter --indicator=">" --header="Select Project To Edit: ID | Project Name | Path")
+    filtered_project_array=(${filtered_project_string})
+    filtered_id=${filtered_project_array[0]}
+    project_id_edit=${all_project_array["${filtered_id},id"]}
+    project_name_edit=${all_project_array["${filtered_id},project_name"]}
+    path_edit=${all_project_array["${filtered_id},path"]}
+    about_edit=${all_project_array["${filtered_id},about"]}
+    
+    echo "Edit Project ->"
+    project_name_input=$(escapejc "$(gum input --header="Enter Project Name" --placeholder="Write Project Name"  --value="${project_name_edit}")")
+    path_input=$(escapejc "$(gum input --header="Enter Project Path" --placeholder="Write Project Path" --value="${path_edit}")")
+    about_input=$(escapejc "$(gum write --header="Enter About Project" --placeholder="Write About Project" --value="${about_edit}")")
+
+    update_feedback=$(gum spin --spinner dot --title "Updating Project (ID-${project_id_edit})..." --show-output -- curl -L -H "application/json" --silent --no-progress-meter --form "data=\"{\\\"project_name\\\":\\\"${project_name_input}\\\", \\\"path\\\": \\\"${path_input}\\\", \\\"about\\\":\\\"${about_input}\\\"}\"" "${gapps_url}?action=update&table=Project&id=${project_id_edit}")
+    echo "${update_feedback}" | jq
+}
+
+function project_delete_pjtodo() {
+    store_project_pjtodo
+    filtered_project_string=$(echo -e ${all_project_string} | gum filter --indicator=">" --header="Select Project To Delete: ID | Project Name | Path")
+    filtered_project_array=(${filtered_project_string})
+    filtered_id=${filtered_project_array[0]}
+    project_id_delete=${all_project_array["${filtered_id},id"]}
+    project_name_delete=${all_project_array["${filtered_id},project_name"]}
+    path_delete=${all_project_array["${filtered_id},path"]}
+    about_delete=${all_project_array["${filtered_id},about"]}
+    echo "Delete Project ->"
+    project_show="  KEY\tVALUE\n"
+    project_show+="  ID\t${project_id_delete}\n"
+    project_show+="  Project Name\t${project_name_delete}\n"
+    project_show+="  Project Type\t${path_delete}\n"
+    project_show+="  About Project\t${about_delete}\n"
+    printf "${project_show}" | prettytable 2
+
+    confirm_delete=$(gum confirm --default="No" "Delete This Project?" && echo "yes" || echo "no")
+    if [[ ${confirm_delete} == 'yes' ]]
+    then
+        delete_feedback=$(gum spin --spinner dot --title "Deleting Project (ID-${project_id_delete})..." --show-output -- curl -L -H "application/json" -d '' "${gapps_url}?action=delete&table=Project&id=${project_id_delete}")
+        echo "${delete_feedback}" | jq
+    fi
+}
+
+if [[ "$1" == 'todo' ]] # Script/Command: "todo"
+then
+    if [[ "$2" == 'help' ]]
+    then
+        help_pjtodo
+        exit
+    fi
+
+    all_project_string=""
+    declare -A all_project_array
+    all_todo_string=""
+    declare -A all_todo_array
+    get_project_store=""
+    get_todo_store=""
+    work_type="$2"
+    action="$3"
+    criteria="$4"
+    case ${work_type} in
+        'project')
+            case ${action} in
+                'view')
+                    project_view_pjtodo;;
+                'add')
+                    project_add_pjtodo;;
+                'edit')
+                    project_edit_pjtodo;;
+                'delete')
+                    project_delete_pjtodo;;
+            esac;;
+        'record') # ToDo Records
+            case ${action} in
+                'view')
+                    todo_view_pjtodo;;
+                'add')
+                    todo_add_pjtodo;;
+                'edit')
+                    todo_edit_pjtodo;;
+                'delete')
+                    todo_delete_pjtodo;;
+            esac;;
+        'attachment')
+            case ${action} in
+                'view')
+                    attachment_view_pjtodo;;
+                'add')
+                    attachment_add_pjtodo;;
+                'edit')
+                    attachment_edit_pjtodo;;
+                'delete')
+                    attachment_delete_pjtodo;;
+            esac;;
+        'comment')
+            case ${action} in
+                'view')
+                    comment_view_pjtodo;;
+                'add')
+                    comment_add_pjtodo;;
+                'edit')
+                    comment_edit_pjtodo;;
+                'delete')
+                    comment_delete_pjtodo;;
+            esac;;
+    esac
+    exit
+fi
+
+#----------------------------END-SCRIPT: pjtodo----------------------------
 
 #----------------------------START-SCRIPT: db-sync----------------------------
 
@@ -4992,6 +5186,35 @@ case ${script_cmd} in
         script_opt_array=(${script_opt_string})
         script_opt=${script_opt_array[0]}
         run_cmd_script+=" ${script_opt}"
+        ;;
+    'todo')
+        script_opt_string=$(echo -e ${pjtodo_help_text} | gum filter --indicator=">" --header="Select Option For ${script_cmd}: Option | Summary")
+        script_opt_array=(${script_opt_string})
+        script_opt=${script_opt_array[0]}
+        run_cmd_script+=" ${script_opt}"
+        case ${script_opt} in
+            'project')
+                script_arg_string=$(echo -e ${pjtodo_project_help} | gum filter --indicator=">" --header="Select Argument For ${script_opt} (${script_cmd}): Argument | Summary")
+                script_arg_array=(${script_arg_string})
+                script_arg=${script_arg_array[0]}
+                ;;
+            'record')
+                script_arg_string=$(echo -e ${pjtodo_todo_help} | gum filter --indicator=">" --header="Select Argument For ${script_opt} (${script_cmd}): Argument | Summary")
+                script_arg_array=(${script_arg_string})
+                script_arg=${script_arg_array[0]}
+                ;;
+            'attachment')
+                script_arg_string=$(echo -e ${pjtodo_attachment_help} | gum filter --indicator=">" --header="Select Argument For ${script_opt} (${script_cmd}): Argument | Summary")
+                script_arg_array=(${script_arg_string})
+                script_arg=${script_arg_array[0]}
+                ;;
+            'comment')
+                script_arg_string=$(echo -e ${pjtodo_comment_help} | gum filter --indicator=">" --header="Select Argument For ${script_opt} (${script_cmd}): Argument | Summary")
+                script_arg_array=(${script_arg_string})
+                script_arg=${script_arg_array[0]}
+                ;;
+        esac
+        run_cmd_script+=" ${script_arg}"
         ;;
     'dbsync')
         script_opt_string=$(echo -e ${dbsync_help_text} | gum filter --indicator=">" --header="Select Option For ${script_cmd}: Option | Summary")
