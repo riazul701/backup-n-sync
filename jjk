@@ -2868,6 +2868,11 @@ add || Add new todo.\n
 edit || Edit existing todo.\n
 delete || Delete existing todo."
 
+pjtodo_record_view_help="all || View all todo list.\n
+working || View working todo.\n
+remain || View remaining todo.\n
+completed || View completed todo."
+
 pjtodo_attachment_help="view || View attachment list.\n
 add || Add new attachment.\n
 edit || Edit existing attachment.\n
@@ -2909,9 +2914,9 @@ function store_todo_pjtodo() {
     if [[ "$OSTYPE" == 'msys' ]]
     then
         echo "Fetching ToDo List..."
-        get_todo_list=$(curl -L -H --silent --no-progress-meter -d '' "${gapps_url}?action=read&table=ToDo&project_id=${project_id_filter}")
+        get_todo_list=$(curl -L -H --silent --no-progress-meter -d '' "${gapps_url}?action=read&table=ToDo&filter_type=condition&filter_condition=record.project_id==${project_id_filter}")
     else
-        get_todo_list=$(gum spin --spinner dot --title "Fetching ToDo List..." --show-output -- curl -L -H --silent --no-progress-meter -d '' "${gapps_url}?action=read&table=ToDo&project_id=${project_id_filter}")
+        get_todo_list=$(gum spin --spinner dot --title "Fetching ToDo List..." --show-output -- curl -L -H --silent --no-progress-meter -d '' "${gapps_url}?action=read&table=ToDo&filter_type=condition&filter_condition=record.project_id==${project_id_filter}")
     fi
     get_todo_list=$(escape_single_quote "${get_todo_list}")
     get_todo_store="${get_todo_list}"
@@ -3031,13 +3036,14 @@ function todo_view_pjtodo() {
 
 function todo_view_filter_pjtodo() {
     store_project_pjtodo
-    filtered_project_string=$(echo -e ${all_project_string} | gum filter --indicator=">" --header="Select Project To Edit: ID | Project Name | Path")
+    filtered_project_string=$(echo -e ${all_project_string} | gum filter --indicator=">" --header="Select Project To View: ID | Project Name | Path")
     filtered_project_array=(${filtered_project_string})
     filtered_project_id=${filtered_project_array[0]}
     store_todo_pjtodo "${filtered_project_id}"
 
     filter_by="$1"
     todo_remain_string=""
+    todo_working_string=""
     todo_completed_string=""
     for each_id in "${TODO_ID_COLL[@]}"; do
         todo_id=${all_todo_array["${each_id},id"]}
@@ -3050,10 +3056,13 @@ function todo_view_filter_pjtodo() {
         status=${all_todo_array["${each_id},status"]}
         project_name=${all_project_array["${project_id},project_name"]}
 
-        if [[ ${filter_by} == 'remain' ]]
+        if [[ ( ${filter_by} == 'remain' ) && ( ${status} == 'remain' ) ]]
         then
             todo_remain_string+="${todo_id}\t${project_name}\t${category}\t${status}\t${summary}\n"
-        elif [[ ${filter_by} == 'completed' ]]
+        elif [[ ( ${filter_by} == 'working' ) && ( ${status} == 'working' ) ]]
+        then
+            todo_working_string+="${todo_id}\t${project_name}\t${category}\t${status}\t${summary}\n"
+        elif [[ ( ${filter_by} == 'completed') && ( ${status} == 'completed' ) ]]
         then
             todo_completed_string+="${todo_id}\t${project_name}\t${category}\t${status}\t${summary}\n"
         fi
@@ -3065,6 +3074,9 @@ function todo_view_filter_pjtodo() {
     elif [[ ${filter_by} == 'remain' ]]
     then
         filtered_todo_string=$(echo -e ${todo_remain_string} | gum filter --indicator=">" --header="ToDo View: ID | Project Name | Category | Status | Summary")
+    elif [[ ${filter_by} == 'working' ]]
+    then
+        filtered_todo_string=$(echo -e ${todo_working_string} | gum filter --indicator=">" --header="ToDo View: ID | Project Name | Category | Status | Summary")
     elif [[ ${filter_by} == 'completed' ]]
     then
         filtered_todo_string=$(echo -e ${todo_completed_string} | gum filter --indicator=">" --header="ToDo View: ID | Project Name | Category | Status | Summary")
@@ -3106,7 +3118,16 @@ then
         'record') # ToDo Records
             case ${action} in
                 'view')
-                    todo_view_filter_pjtodo 'remain';;
+                    case ${criteria} in
+                        'all')
+                            todo_view_filter_pjtodo 'all';;
+                        'working')
+                            todo_view_filter_pjtodo 'working';;
+                        'remain')
+                            todo_view_filter_pjtodo 'remain';;
+                        'completed')
+                            todo_view_filter_pjtodo 'completed';;
+                    esac;;
                 'add')
                     todo_add_pjtodo;;
                 'edit')
@@ -5292,6 +5313,7 @@ case ${script_cmd} in
         script_opt_array=(${script_opt_string})
         script_opt=${script_opt_array[0]}
         run_cmd_script+=" ${script_opt}"
+        nested_arg=''
         case ${script_opt} in
             'project')
                 script_arg_string=$(echo -e ${pjtodo_project_help} | gum filter --indicator=">" --header="Select Argument For ${script_opt} (${script_cmd}): Argument | Summary")
@@ -5302,6 +5324,12 @@ case ${script_cmd} in
                 script_arg_string=$(echo -e ${pjtodo_record_help} | gum filter --indicator=">" --header="Select Argument For ${script_opt} (${script_cmd}): Argument | Summary")
                 script_arg_array=(${script_arg_string})
                 script_arg=${script_arg_array[0]}
+                if [[ ${script_arg} == 'view' ]]
+                then
+                    nested_arg_string=$(echo -e ${pjtodo_record_view_help} | gum filter --indicator=">" --header="Select Argument For ${script_arg} (${script_cmd}/${script_opt}): Argument | Summary")
+                    nested_arg_array=(${nested_arg_string})
+                    nested_arg=${nested_arg_array[0]}
+                fi
                 ;;
             'attachment')
                 script_arg_string=$(echo -e ${pjtodo_attachment_help} | gum filter --indicator=">" --header="Select Argument For ${script_opt} (${script_cmd}): Argument | Summary")
@@ -5315,6 +5343,10 @@ case ${script_cmd} in
                 ;;
         esac
         run_cmd_script+=" ${script_arg}"
+        if [[ ${nested_arg} != '' ]]
+        then
+            run_cmd_script+=" ${nested_arg}"
+        fi
         ;;
     'dbsync')
         script_opt_string=$(echo -e ${dbsync_help_text} | gum filter --indicator=">" --header="Select Option For ${script_cmd}: Option | Summary")
