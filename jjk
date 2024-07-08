@@ -2867,6 +2867,7 @@ edit || Edit existing project.\n
 delete || Delete existing project."
 
 pjtodo_record_help="view || View todo list.\n
+history || History of todo list.\n
 add || Add new todo.\n
 edit || Edit existing todo.\n
 delete || Delete existing todo."
@@ -2875,6 +2876,15 @@ pjtodo_record_view_help="all || View all todo list.\n
 working || View working todo.\n
 remain || View remaining todo.\n
 completed || View completed todo."
+
+pjtodo_record_history_help="all-short || Short history of all todo.\n
+working-short || Short history of working todo.\n
+remain-short || Short history of remaining todo.\n
+completed-short || Short history of completed todo.\n
+all-long || Long history of all todo.\n
+working-long || Long history of working todo.\n
+remain-long || Long history of remaining todo.\n
+completed-long || Long history of completed todo."
 
 pjtodo_attachment_help="view || View attachment list.\n
 add || Add new attachment.\n
@@ -2942,15 +2952,22 @@ all_todo_string+=\"\(.id)\\t${all_project_array['\''\(.project_id),project_name'
 }
 
 function store_attachment_pjtodo() {
-    project_id_filter="$1"
-    todo_id_filter="$2"
+    view_type="$1"
+    project_id_filter="$2"
+    todo_id_filter="$3"
+    if [[ ${view_type} == 'history' ]]
+    then
+        api_condition="record.project_id==${project_id_filter}"
+    else
+        api_condition="record.project_id==${project_id_filter}%26%26record.todo_id==${todo_id_filter}"
+    fi
     all_attachment_string=""
     if [[ "$OSTYPE" == 'msys' ]]
     then
         echo "Fetching Attachment List..."
-        get_attachment_list=$(curl -L -H --silent --no-progress-meter -d '' "${gapps_url}?action=read&table=Attachment&filter_type=condition&filter_condition=record.project_id==${project_id_filter}%26%26record.todo_id==${todo_id_filter}")
+        get_attachment_list=$(curl -L -H --silent --no-progress-meter -d '' "${gapps_url}?action=read&table=Attachment&filter_type=condition&filter_condition=${api_condition}")
     else
-        get_attachment_list=$(gum spin --spinner dot --title "Fetching Attachment List..." --show-output -- curl -L -H --silent --no-progress-meter -d '' "${gapps_url}?action=read&table=Attachment&filter_type=condition&filter_condition=record.project_id==${project_id_filter}%26%26record.todo_id==${todo_id_filter}")
+        get_attachment_list=$(gum spin --spinner dot --title "Fetching Attachment List..." --show-output -- curl -L -H --silent --no-progress-meter -d '' "${gapps_url}?action=read&table=Attachment&filter_type=condition&filter_condition=${api_condition}")
     fi
     get_attachment_list=$(escape_single_quote "${get_attachment_list}")
     get_attachment_store="${get_attachment_list}"
@@ -2973,15 +2990,22 @@ all_attachment_string+=\"\(.id)\\t${all_project_array['\''\(.project_id),project
 }
 
 function store_comment_pjtodo() {
-    project_id_filter="$1"
-    todo_id_filter="$2"
+    view_type="$1"
+    project_id_filter="$2"
+    todo_id_filter="$3"
+    if [[ ${view_type} == 'history' ]]
+    then
+        api_condition="record.project_id==${project_id_filter}"
+    else
+        api_condition="record.project_id==${project_id_filter}%26%26record.todo_id==${todo_id_filter}"
+    fi
     all_comment_string=""
     if [[ "$OSTYPE" == 'msys' ]]
     then
         echo "Fetching Comment List..."
-        get_comment_list=$(curl -L -H --silent --no-progress-meter -d '' "${gapps_url}?action=read&table=Comment&filter_type=condition&filter_condition=record.project_id==${project_id_filter}%26%26record.todo_id==${todo_id_filter}")
+        get_comment_list=$(curl -L -H --silent --no-progress-meter -d '' "${gapps_url}?action=read&table=Comment&filter_type=condition&filter_condition=${api_condition}")
     else
-        get_comment_list=$(gum spin --spinner dot --title "Fetching Comment List..." --show-output -- curl -L -H --silent --no-progress-meter -d '' "${gapps_url}?action=read&table=Comment&filter_type=condition&filter_condition=record.project_id==${project_id_filter}%26%26record.todo_id==${todo_id_filter}")
+        get_comment_list=$(gum spin --spinner dot --title "Fetching Comment List..." --show-output -- curl -L -H --silent --no-progress-meter -d '' "${gapps_url}?action=read&table=Comment&filter_type=condition&filter_condition=${api_condition}")
     fi
     get_comment_list=$(escape_single_quote "${get_comment_list}")
     get_comment_store="${get_comment_list}"
@@ -3085,8 +3109,8 @@ function todo_view_pjtodo() {
     status_get=${all_todo_array["${filtered_id},status"]}
     project_name_get=${all_project_array["${project_id_get},project_name"]}
 
-    store_attachment_pjtodo ${project_id_get} ${todo_id_get}
-    store_comment_pjtodo ${project_id_get} ${todo_id_get}
+    store_attachment_pjtodo 'view' ${project_id_get} ${todo_id_get}
+    store_comment_pjtodo 'view' ${project_id_get} ${todo_id_get}
 
     echo "ToDo Details ->"
     todo_show="KEY\tVALUE\n"
@@ -3141,7 +3165,7 @@ function todo_view_filter_pjtodo() {
     filtered_project_id=${filtered_project_array[0]}
     store_todo_pjtodo "${filtered_project_id}"
 
-    filter_by="$1"
+    filter_by="$1" # all/working/remain/completed
     todo_remain_string=""
     todo_working_string=""
     todo_completed_string=""
@@ -3184,6 +3208,123 @@ function todo_view_filter_pjtodo() {
     filtered_todo_array=(${filtered_todo_string})
     filtered_id=${filtered_todo_array[0]}
     todo_view_pjtodo ${filtered_id}
+}
+
+function todo_history_pjtodo() {
+    store_project_pjtodo
+    filtered_project_string=$(echo -e ${all_project_string} | gum filter --indicator=">" --header="Select Project To View: ID | Project Name | Path")
+    filtered_project_array=(${filtered_project_string})
+    filtered_project_id=${filtered_project_array[0]}
+    store_todo_pjtodo "${filtered_project_id}"
+    store_attachment_pjtodo 'history' ${filtered_project_id}
+    store_comment_pjtodo 'history' ${filtered_project_id}
+
+    filter_by="$1" # all/working/remain/completed
+    view_type="$2" # short/long output
+    all_todo_list=""
+    remain_todo_list=""
+    working_todo_list=""
+    completed_todo_list=""
+    project_name=${all_project_array["${filtered_project_id},project_name"]}
+    echo -e "PROJECT NAME: ${project_name}\n"
+    for each_id in "${TODO_ID_COLL[@]}"; do
+        todo_id=${all_todo_array["${each_id},id"]}
+        project_id_todo=${all_todo_array["${each_id},project_id"]}
+        category_todo=${all_todo_array["${each_id},category"]}
+        created_at_todo=${all_todo_array["${each_id},created_at"]}
+        completed_at_todo=${all_todo_array["${each_id},completed_at"]}
+        summary_todo=${all_todo_array["${each_id},summary"]}
+        description_todo=${all_todo_array["${each_id},description"]}
+        status_todo=${all_todo_array["${each_id},status"]}
+
+        todo_receive="(${todo_id}): ${summary_todo}\nCreated at: ${created_at_todo}\nCompleted_at: ${completed_at_todo}\nCategory: ${category_todo}\nStatus: ${status_todo}\nDescription: ${description_todo}\n\n"
+
+        attachment_receive="\tATTACHMENT LIST: \n\n"
+        for each_id in "${ATTACHMENT_ID_COLL[@]}"; do
+            attachment_id=${all_attachment_array["${each_id},id"]}
+            project_id_attach=${all_attachment_array["${each_id},project_id"]}
+            todo_id_attach=${all_attachment_array["${each_id},todo_id"]}
+            created_at_attach=${all_attachment_array["${each_id},created_at"]}
+            attachment_name=${all_attachment_array["${each_id},attachment_name"]}
+            description_attach=${all_attachment_array["${each_id},description"]}
+            rclone_name_attach=${all_attachment_array["${each_id},rclone_name"]}
+            rclone_path_attach=${all_attachment_array["${each_id},rclone_path"]}
+            if [[ ${todo_id} != ${todo_id_attach} ]]
+            then
+                continue
+            fi
+
+            attachment_receive+="\t(${attachment_id}): ${attachment_name}\n"
+            attachment_receive+="\tCreated at: ${created_at_attach}\n"
+            attachment_receive+="\tDescription: ${description_attach}\n"
+            attachment_receive+="\tRclone Name: ${rclone_name_attach}\n"
+            attachment_receive+="\tRclone Path: ${rclone_path_attach}\n\n"
+        done
+
+        comment_receive="\tCOMMENT LIST: \n\n"
+        for each_id in "${COMMENT_ID_COLL[@]}"; do
+            comment_id=${all_comment_array["${each_id},id"]}
+            project_id_comment=${all_comment_array["${each_id},project_id"]}
+            todo_id_comment=${all_comment_array["${each_id},todo_id"]}
+            created_at_comment=${all_comment_array["${each_id},created_at"]}
+            summary_comment=${all_comment_array["${each_id},summary"]}
+            description_comment=${all_comment_array["${each_id},description"]}
+            if [[ ${todo_id} != ${todo_id_comment} ]]
+            then
+                continue
+            fi
+
+            comment_receive+="\t(${comment_id}): ${summary_comment}\n"
+            comment_receive+="\tCreated at: ${created_at_comment}\n"
+            comment_receive+="\tDescription: ${description_comment}\n\n"
+        done
+
+        if [[ ( ${filter_by} == 'remain' ) && ( ${status_todo} == 'remain' ) ]]
+        then
+            remain_todo_list+="${todo_receive}"
+            if [[ ${view_type} == 'long' ]]
+            then
+                remain_todo_list+="${attachment_receive}"
+                remain_todo_list+="${comment_receive}"
+            fi
+        elif [[ ( ${filter_by} == 'working' ) && ( ${status_todo} == 'working' ) ]]
+        then
+            working_todo_list+="${todo_receive}"
+            if [[ ${view_type} == 'long' ]]
+            then
+                working_todo_list+="${attachment_receive}"
+                working_todo_list+="${comment_receive}"
+            fi
+        elif [[ ( ${filter_by} == 'completed') && ( ${status_todo} == 'completed' ) ]]
+        then
+            completed_todo_list+="${todo_receive}"
+            if [[ ${view_type} == 'long' ]]
+            then
+                completed_todo_list+="${attachment_receive}"
+                completed_todo_list+="${comment_receive}"
+            fi
+        else
+            all_todo_list+="${todo_receive}"
+            if [[ ${view_type} == 'long' ]]
+            then
+                all_todo_list+="${attachment_receive}"
+                all_todo_list+="${comment_receive}"
+            fi
+        fi
+    done
+
+    if [[ ${filter_by} == 'remain' ]]
+    then
+        echo -e "${remain_todo_list}"
+    elif [[ ${filter_by} == 'working' ]]
+    then
+        echo -e "${working_todo_list}"
+    elif [[ ${filter_by} == 'completed' ]]
+    then
+        echo -e "${completed_todo_list}"
+    else
+        echo -e "${all_todo_list}"
+    fi
 }
 
 if [[ "$1" == 'todo' ]] # Script/Command: "todo"
@@ -3233,6 +3374,25 @@ then
                             todo_view_filter_pjtodo 'remain';;
                         'completed')
                             todo_view_filter_pjtodo 'completed';;
+                    esac;;
+                'history')
+                    case ${criteria} in
+                        'all-short')
+                            todo_history_pjtodo 'all' 'short';;
+                        'working-short')
+                            todo_history_pjtodo 'working' 'short';;
+                        'remain-short')
+                            todo_history_pjtodo 'remain' 'short';;
+                        'completed-short')
+                            todo_history_pjtodo 'completed' 'short';;
+                        'all-long')
+                            todo_history_pjtodo 'all' 'long';;
+                        'working-long')
+                            todo_history_pjtodo 'working' 'long';;
+                        'remain-long')
+                            todo_history_pjtodo 'remain' 'long';;
+                        'completed-long')
+                            todo_history_pjtodo 'completed' 'long';;
                     esac;;
                 'add')
                     todo_add_pjtodo;;
@@ -5430,12 +5590,18 @@ case ${script_cmd} in
                 script_arg_string=$(echo -e ${pjtodo_record_help} | gum filter --indicator=">" --header="Select Argument For ${script_opt} (${script_cmd}): Argument | Summary")
                 script_arg_array=(${script_arg_string})
                 script_arg=${script_arg_array[0]}
-                if [[ ${script_arg} == 'view' ]]
-                then
+                case ${script_arg} in
+                'view')
                     nested_arg_string=$(echo -e ${pjtodo_record_view_help} | gum filter --indicator=">" --header="Select Argument For ${script_arg} (${script_cmd}/${script_opt}): Argument | Summary")
                     nested_arg_array=(${nested_arg_string})
                     nested_arg=${nested_arg_array[0]}
-                fi
+                    ;;
+                'history')
+                    nested_arg_string=$(echo -e ${pjtodo_record_history_help} | gum filter --indicator=">" --header="Select Argument For ${script_arg} (${script_cmd}/${script_opt}): Argument | Summary")
+                    nested_arg_array=(${nested_arg_string})
+                    nested_arg=${nested_arg_array[0]}
+                    ;;
+                esac
                 ;;
             'attachment')
                 script_arg_string=$(echo -e ${pjtodo_attachment_help} | gum filter --indicator=">" --header="Select Argument For ${script_opt} (${script_cmd}): Argument | Summary")
