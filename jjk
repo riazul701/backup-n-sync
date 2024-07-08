@@ -163,11 +163,14 @@ then
   exit
 fi
 
-declare -a DOWNLOAD_ID_COLL # ID collection of Downloads, to use with for-loop. "-a"=Indexed_Array
-declare -a PROJECT_ID_COLL # ID collection of Projects, to use with for-loop. "-a"=Indexed_Array
-declare -a TODO_ID_COLL # ID collection of ToDo, to use with for-loop. "-a"=Indexed_Array
-declare -a DEVICE_ID_COLL # ID collection of Devices, to use with for-loop. "-a"=Indexed_Array
-declare -a TASK_ID_COLL # ID collection of Tasks, to use with for-loop. "-a"=Indexed_Array
+# ID collection of Downloads, Projects, ToDo, Attachments, Comments, Devices, Tasks, TO use with for-loop. "-a"=Indexed_Array
+declare -a DOWNLOAD_ID_COLL
+declare -a PROJECT_ID_COLL
+declare -a TODO_ID_COLL
+declare -a ATTACHMENT_ID_COLL
+declare -a COMMENT_ID_COLL
+declare -a DEVICE_ID_COLL
+declare -a TASK_ID_COLL
 declare -A restic_repo_list # "-A"=Associative_Array
 declare -A git_repo_list
 declare -A all_repo_list
@@ -2938,6 +2941,66 @@ all_todo_string+=\"\(.id)\\t${all_project_array['\''\(.project_id),project_name'
     all_todo_string=${all_todo_string%??}
 }
 
+function store_attachment_pjtodo() {
+    project_id_filter="$1"
+    todo_id_filter="$2"
+    all_attachment_string=""
+    if [[ "$OSTYPE" == 'msys' ]]
+    then
+        echo "Fetching Attachment List..."
+        get_attachment_list=$(curl -L -H --silent --no-progress-meter -d '' "${gapps_url}?action=read&table=Attachment&filter_type=condition&filter_condition=record.project_id==${project_id_filter}%26%26record.todo_id==${todo_id_filter}")
+    else
+        get_attachment_list=$(gum spin --spinner dot --title "Fetching Attachment List..." --show-output -- curl -L -H --silent --no-progress-meter -d '' "${gapps_url}?action=read&table=Attachment&filter_type=condition&filter_condition=record.project_id==${project_id_filter}%26%26record.todo_id==${todo_id_filter}")
+    fi
+    get_attachment_list=$(escape_single_quote "${get_attachment_list}")
+    get_attachment_store="${get_attachment_list}"
+    # echo "${get_attachment_list}" >> "${repo_file_path}/test_attachment.txt"
+
+    get_attachment_array=$(echo "${get_attachment_list}" | jq -r '.data|map("
+all_attachment_array['\''\(.id),id'\'']='\''\(.id)'\'';
+all_attachment_array['\''\(.id),project_id'\'']='\''\(.project_id)'\'';
+all_attachment_array['\''\(.id),todo_id'\'']='\''\(.todo_id)'\'';
+all_attachment_array['\''\(.id),created_at'\'']='\''\(.created_at)'\'';
+all_attachment_array['\''\(.id),attachment_name'\'']='\''\(.attachment_name)'\'';
+all_attachment_array['\''\(.id),description'\'']='\''\(.description)'\'';
+all_attachment_array['\''\(.id),rclone_name'\'']='\''\(.rclone_name)'\'';
+all_attachment_array['\''\(.id),rclone_path'\'']='\''\(.rclone_path)'\'';
+ATTACHMENT_ID_COLL+=('\''\(.id)'\'');
+all_attachment_string+=\"\(.id)\\t${all_project_array['\''\(.project_id),project_name'\'']}\\t\(.todo_id)\\t${all_todo_array['\''\(.todo_id),category'\'']}\\t${all_todo_array['\''\(.todo_id),status'\'']}\\t\(.attachment_name)\\n\";
+")|.[]')
+    eval "${get_attachment_array}"
+    all_attachment_string=${all_attachment_string%??}
+}
+
+function store_comment_pjtodo() {
+    project_id_filter="$1"
+    todo_id_filter="$2"
+    all_comment_string=""
+    if [[ "$OSTYPE" == 'msys' ]]
+    then
+        echo "Fetching Comment List..."
+        get_comment_list=$(curl -L -H --silent --no-progress-meter -d '' "${gapps_url}?action=read&table=Comment&filter_type=condition&filter_condition=record.project_id==${project_id_filter}%26%26record.todo_id==${todo_id_filter}")
+    else
+        get_comment_list=$(gum spin --spinner dot --title "Fetching Comment List..." --show-output -- curl -L -H --silent --no-progress-meter -d '' "${gapps_url}?action=read&table=Comment&filter_type=condition&filter_condition=record.project_id==${project_id_filter}%26%26record.todo_id==${todo_id_filter}")
+    fi
+    get_comment_list=$(escape_single_quote "${get_comment_list}")
+    get_comment_store="${get_comment_list}"
+    # echo "${get_comment_list}" >> "${repo_file_path}/test_comment.txt"
+
+    get_comment_array=$(echo "${get_comment_list}" | jq -r '.data|map("
+all_comment_array['\''\(.id),id'\'']='\''\(.id)'\'';
+all_comment_array['\''\(.id),project_id'\'']='\''\(.project_id)'\'';
+all_comment_array['\''\(.id),todo_id'\'']='\''\(.todo_id)'\'';
+all_comment_array['\''\(.id),created_at'\'']='\''\(.created_at)'\'';
+all_comment_array['\''\(.id),summary'\'']='\''\(.summary)'\'';
+all_comment_array['\''\(.id),description'\'']='\''\(.description)'\'';
+COMMENT_ID_COLL+=('\''\(.id)'\'');
+all_comment_string+=\"\(.id)\\t${all_project_array['\''\(.project_id),project_name'\'']}\\t\(.todo_id)\\t${all_todo_array['\''\(.todo_id),category'\'']}\\t${all_todo_array['\''\(.todo_id),status'\'']}\\t\(.summary)\\n\";
+")|.[]')
+    eval "${get_comment_array}"
+    all_comment_string=${all_comment_string%??}
+}
+
 function project_view_pjtodo() {
     store_project_pjtodo
     filtered_project_string=$(echo -e ${all_project_string} | gum filter --indicator=">" --header="Select Project To Edit: ID | Project Name | Path")
@@ -3021,6 +3084,10 @@ function todo_view_pjtodo() {
     description_get=${all_todo_array["${filtered_id},description"]}
     status_get=${all_todo_array["${filtered_id},status"]}
     project_name_get=${all_project_array["${project_id_get},project_name"]}
+
+    store_attachment_pjtodo ${project_id_get} ${todo_id_get}
+    store_comment_pjtodo ${project_id_get} ${todo_id_get}
+
     echo "ToDo Details ->"
     todo_show="KEY\tVALUE\n"
     todo_show+="ID\t${todo_id_get}\n"
@@ -3029,9 +3096,42 @@ function todo_view_pjtodo() {
     todo_show+="Created At\t${created_at_get}\n"
     todo_show+="Completed At\t${completed_at_get}\n"
     todo_show+="Summary\t${summary_get}\n"
-    todo_show+="Description\t${description_get}\n"
     todo_show+="Status\t${status_get}\n"
     printf "${todo_show}" | prettytable 2
+    echo -e "ToDo Description: ${description_get}\n"
+
+    attachment_show="ATTACHMENT LIST: \n\n"
+    comment_show="COMMENT LIST: \n\n"
+    for each_id in "${ATTACHMENT_ID_COLL[@]}"; do
+        attachment_id=${all_attachment_array["${each_id},id"]}
+        project_id_attach=${all_attachment_array["${each_id},project_id"]}
+        todo_id_attach=${all_attachment_array["${each_id},todo_id"]}
+        created_at_attach=${all_attachment_array["${each_id},created_at"]}
+        attachment_name=${all_attachment_array["${each_id},attachment_name"]}
+        description_attach=${all_attachment_array["${each_id},description"]}
+        rclone_name_attach=${all_attachment_array["${each_id},rclone_name"]}
+        rclone_path_attach=${all_attachment_array["${each_id},rclone_path"]}
+        # project_name_attach=${all_project_array["${project_id_attach},project_name"]}
+        attachment_show+="(${attachment_id}): ${attachment_name}\n"
+        attachment_show+="Created at: ${created_at_attach}\n"
+        attachment_show+="Description: ${description_attach}\n"
+        attachment_show+="Rclone Name: ${rclone_name_attach}\n"
+        attachment_show+="Rclone Path: ${rclone_path_attach}\n\n"
+    done
+
+    for each_id in "${COMMENT_ID_COLL[@]}"; do
+        comment_id=${all_comment_array["${each_id},id"]}
+        project_id_comment=${all_comment_array["${each_id},project_id"]}
+        todo_id_comment=${all_comment_array["${each_id},todo_id"]}
+        created_at_comment=${all_comment_array["${each_id},created_at"]}
+        summary_comment=${all_comment_array["${each_id},summary"]}
+        description_comment=${all_comment_array["${each_id},description"]}
+        comment_show+="(${comment_id}): ${summary_comment}\n"
+        comment_show+="Created at: ${created_at_comment}\n"
+        comment_show+="Description: ${description_comment}\n\n"
+    done
+    echo -e "${attachment_show}"
+    echo -e "${comment_show}"
 }
 
 function todo_view_filter_pjtodo() {
@@ -3098,8 +3198,14 @@ then
     declare -A all_project_array
     all_todo_string=""
     declare -A all_todo_array
+    all_attachment_string=""
+    declare -A all_attachment_array
+    all_comment_string=""
+    declare -A all_comment_array
     get_project_store=""
     get_todo_store=""
+    get_attachment_store=""
+    get_comment_store=""
     work_type="$2"
     action="$3"
     criteria="$4"
