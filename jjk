@@ -2984,7 +2984,7 @@ all_attachment_array['\''\(.id),description'\'']='\''\(.description)'\'';
 all_attachment_array['\''\(.id),rclone_name'\'']='\''\(.rclone_name)'\'';
 all_attachment_array['\''\(.id),rclone_path'\'']='\''\(.rclone_path)'\'';
 ATTACHMENT_ID_COLL+=('\''\(.id)'\'');
-all_attachment_string+=\"\(.id)\\t\(.todo_id)\\t\(.attachment_name)\\n\";
+all_attachment_string+=\"\(.id)\\t\(.created_at)\\t\(.attachment_name)\\n\";
 ")|.[]')
     eval "${get_attachment_array}"
     all_attachment_string=${all_attachment_string%??}
@@ -3020,7 +3020,7 @@ all_comment_array['\''\(.id),created_at'\'']='\''\(.created_at)'\'';
 all_comment_array['\''\(.id),summary'\'']='\''\(.summary)'\'';
 all_comment_array['\''\(.id),description'\'']='\''\(.description)'\'';
 COMMENT_ID_COLL+=('\''\(.id)'\'');
-all_comment_string+=\"\(.id)\\t${all_project_array['\''\(.project_id),project_name'\'']}\\t\(.todo_id)\\t${all_todo_array['\''\(.todo_id),category'\'']}\\t${all_todo_array['\''\(.todo_id),status'\'']}\\t\(.summary)\\n\";
+all_comment_string+=\"\(.id)\\t\(.created_at)\\t\(.summary)\\n\";
 ")|.[]')
     eval "${get_comment_array}"
     all_comment_string=${all_comment_string%??}
@@ -3424,7 +3424,7 @@ function attachment_view_pjtodo() {
     filtered_todo_id=${filtered_todo_array[0]}
 
     store_attachment_pjtodo 'view' ${filtered_project_id} ${filtered_todo_id}
-    filtered_attachment_string=$(echo -e ${all_attachment_string} | gum filter --indicator=">" --header="(Attachment) ${filtered_project_name}: ID | ToDo ID | Attachment Name")
+    filtered_attachment_string=$(echo -e ${all_attachment_string} | gum filter --indicator=">" --header="(${filtered_todo_id}/Attachment) ${filtered_project_name}: ID | Created at | Name")
     filtered_attachment_array=(${filtered_attachment_string})
     filtered_attachment_id=${filtered_attachment_array[0]}
 
@@ -3512,7 +3512,7 @@ function attachment_edit_pjtodo() {
     filtered_todo_id=${filtered_todo_array[0]}
 
     store_attachment_pjtodo 'view' ${filtered_project_id} ${filtered_todo_id}
-    filtered_attachment_string=$(echo -e ${all_attachment_string} | gum filter --indicator=">" --header="(Attachment) ${filtered_project_name}: ID | ToDo ID | Attachment Name")
+    filtered_attachment_string=$(echo -e ${all_attachment_string} | gum filter --indicator=">" --header="(${filtered_todo_id}/Attachment) ${filtered_project_name}: ID | Created at | Attachment Name")
     filtered_attachment_array=(${filtered_attachment_string})
     filtered_attachment_id=${filtered_attachment_array[0]}
 
@@ -3551,7 +3551,7 @@ function attachment_delete_pjtodo() {
     filtered_todo_id=${filtered_todo_array[0]}
 
     store_attachment_pjtodo 'view' ${filtered_project_id} ${filtered_todo_id}
-    filtered_attachment_string=$(echo -e ${all_attachment_string} | gum filter --indicator=">" --header="(Attachment) ${filtered_project_name}: ID | ToDo ID | Attachment Name")
+    filtered_attachment_string=$(echo -e ${all_attachment_string} | gum filter --indicator=">" --header="(${filtered_todo_id}/Attachment) ${filtered_project_name}: ID | Created at | Attachment Name")
     filtered_attachment_array=(${filtered_attachment_string})
     filtered_attachment_id=${filtered_attachment_array[0]}
 
@@ -3598,6 +3598,189 @@ function attachment_delete_pjtodo() {
     if [[ ${confirm_delete} == 'yes' ]]
     then
         delete_feedback=$(gum spin --spinner dot --title "Deleting ToDo Attachment (ID-${attachment_id_delete})..." --show-output -- curl -L -H "application/json" -d '' "${gapps_url}?action=delete&table=Attachment&id=${attachment_id_delete}")
+        echo "${delete_feedback}" | jq
+    fi
+}
+
+function comment_view_pjtodo() {
+    store_project_pjtodo
+    filtered_project_string=$(echo -e ${all_project_string} | gum filter --indicator=">" --header="Select Project: ID | Project Name | Path")
+    filtered_project_array=(${filtered_project_string})
+    filtered_project_id=${filtered_project_array[0]}
+    filtered_project_name=${all_project_array["${filtered_project_id},project_name"]}
+    store_todo_pjtodo "${filtered_project_id}"
+    if [[ ${all_todo_string} == '' ]]
+    then
+        echo 'No Project ToDo Found!'
+        exit
+    fi
+    filtered_todo_string=$(echo -e ${all_todo_string} | gum filter --indicator=">" --header="(ToDo) ${filtered_project_name}: ID | Category | Status | Summary")
+    filtered_todo_array=(${filtered_todo_string})
+    filtered_todo_id=${filtered_todo_array[0]}
+
+    store_comment_pjtodo 'view' ${filtered_project_id} ${filtered_todo_id}
+    filtered_comment_string=$(echo -e ${all_comment_string} | gum filter --indicator=">" --header="(${filtered_todo_id}/Comment) ${filtered_project_name}: ID | Created at | Summary")
+    filtered_comment_array=(${filtered_comment_string})
+    filtered_comment_id=${filtered_comment_array[0]}
+
+    comment_id=${all_comment_array["${filtered_comment_id},id"]}
+    project_id_comment=${all_comment_array["${filtered_comment_id},project_id"]}
+    todo_id_comment=${all_comment_array["${filtered_comment_id},todo_id"]}
+    comment_created_at=${all_comment_array["${filtered_comment_id},created_at"]}
+    comment_summary=${all_comment_array["${filtered_comment_id},summary"]}
+    comment_description=${all_comment_array["${filtered_comment_id},description"]}
+
+    project_name_get=${all_project_array["${project_id_comment},project_name"]}
+    todo_category=${all_todo_array["${todo_id_comment},category"]}
+    todo_created_at=${all_todo_array["${todo_id_comment},created_at"]}
+    todo_completed_at=${all_todo_array["${todo_id_comment},completed_at"]}
+    todo_summary=${all_todo_array["${todo_id_comment},summary"]}
+    todo_description=${all_todo_array["${todo_id_comment},description"]}
+    todo_status=${all_todo_array["${todo_id_comment},status"]}
+
+    echo "ToDo Details ->"
+    show_todo="KEY\tVALUE\n"
+    show_todo+="ID\t${todo_id_comment}\n"
+    show_todo+="Project Name\t${project_name_get}\n"
+    show_todo+="Summary\t${todo_summary}\n"
+    show_todo+="Created at\t${todo_created_at}\n"
+    show_todo+="Completed at\t${todo_completed_at}\n"
+    show_todo+="Category\t${todo_category}\n"
+    show_todo+="Status\t${todo_status}\n"
+    printf "${show_todo}" | prettytable 2
+    echo -e "ToDo Description: \n${todo_description}\n"
+
+    echo "ToDo Attachment Details ->"
+    show_comment="KEY\tVALUE\n"
+    show_comment+="ID\t${comment_id}\n"
+    show_comment+="Comment Summary\t${comment_summary}\n"
+    show_comment+="Created at\t${comment_created_at}\n"
+    printf "${show_comment}" | prettytable 2
+    echo -e "Comment Description: \n${comment_description}"
+}
+
+function comment_add_pjtodo() {
+    store_project_pjtodo
+    filtered_project_string=$(echo -e ${all_project_string} | gum filter --indicator=">" --header="Select Project: ID | Project Name | Path")
+    filtered_project_array=(${filtered_project_string})
+    filtered_project_id=${filtered_project_array[0]}
+    filtered_project_name=${all_project_array["${filtered_project_id},project_name"]}
+    store_todo_pjtodo "${filtered_project_id}"
+    if [[ ${all_todo_string} == '' ]]
+    then
+        echo 'No Project ToDo Found!'
+        exit
+    fi
+    filtered_todo_string=$(echo -e ${all_todo_string} | gum filter --indicator=">" --header="(ToDo) ${filtered_project_name}: ID | Category | Status | Summary")
+    filtered_todo_array=(${filtered_todo_string})
+    filtered_todo_id=${filtered_todo_array[0]}
+
+    echo "Add ToDo Comment ->"
+    created_at_input=$(escapejc "$(gum input --header="Enter Comment Create Date" --placeholder="Write Comment Create Date")")
+    summary_input=$(escapejc "$(gum input --header="Enter Comment Summary" --placeholder="Write Comment Summary")")
+    description_input=$(escapejc "$(gum write --header="Enter Comment Description" --placeholder="Write Comment Description")")
+
+    insert_feedback=$(gum spin --spinner dot --title "Adding ToDo Comment..." --show-output -- curl -L -H "application/json" --silent --no-progress-meter --form "data=\"{\\\"project_id\\\":\\\"${filtered_project_id}\\\", \\\"todo_id\\\": \\\"${filtered_todo_id}\\\", \\\"created_at\\\":\\\"${created_at_input}\\\", \\\"summary\\\":\\\"${summary_input}\\\", \\\"description\\\":\\\"${description_input}\\\"}\"" "${gapps_url}?action=insert&table=Comment")
+    echo "${insert_feedback}" | jq
+}
+
+function comment_edit_pjtodo() {
+    store_project_pjtodo
+    filtered_project_string=$(echo -e ${all_project_string} | gum filter --indicator=">" --header="Select Project: ID | Project Name | Path")
+    filtered_project_array=(${filtered_project_string})
+    filtered_project_id=${filtered_project_array[0]}
+    filtered_project_name=${all_project_array["${filtered_project_id},project_name"]}
+    store_todo_pjtodo "${filtered_project_id}"
+    if [[ ${all_todo_string} == '' ]]
+    then
+        echo 'No Project ToDo Found!'
+        exit
+    fi
+    filtered_todo_string=$(echo -e ${all_todo_string} | gum filter --indicator=">" --header="(ToDo) ${filtered_project_name}: ID | Category | Status | Summary")
+    filtered_todo_array=(${filtered_todo_string})
+    filtered_todo_id=${filtered_todo_array[0]}
+
+    store_comment_pjtodo 'view' ${filtered_project_id} ${filtered_todo_id}
+    filtered_comment_string=$(echo -e ${all_comment_string} | gum filter --indicator=">" --header="(${filtered_todo_id}/Comment) ${filtered_project_name}: ID | Created at | Summary")
+    filtered_comment_array=(${filtered_comment_string})
+    filtered_comment_id=${filtered_comment_array[0]}
+
+    comment_id_edit=${all_comment_array["${filtered_comment_id},id"]}
+    project_id_edit=${all_comment_array["${filtered_comment_id},project_id"]}
+    todo_id_edit=${all_comment_array["${filtered_comment_id},todo_id"]}
+    created_at_edit=${all_comment_array["${filtered_comment_id},created_at"]}
+    summary_edit=${all_comment_array["${filtered_comment_id},summary"]}
+    description_edit=${all_comment_array["${filtered_comment_id},description"]}
+
+    echo "Edit ToDo Comment ->"
+    created_at_input=$(escapejc "$(gum input --header="Enter Comment Create Date" --placeholder="Write Comment Create Date" --value="${created_at_edit}")")
+    summary_input=$(escapejc "$(gum input --header="Enter Comment Summary" --placeholder="Write Comment Summary" --value="${summary_edit}")")
+    description_input=$(escapejc "$(gum write --header="Enter Comment Description" --placeholder="Write Comment Description" --value="${description_edit}")")
+
+    update_feedback=$(gum spin --spinner dot --title "Updating ToDo Comment (ID-${attachment_id_edit})..." --show-output -- curl -L -H "application/json" --silent --no-progress-meter --form "data=\"{\\\"project_id\\\":\\\"${project_id_edit}\\\", \\\"todo_id\\\": \\\"${todo_id_edit}\\\", \\\"created_at\\\":\\\"${created_at_input}\\\", \\\"summary\\\":\\\"${summary_input}\\\", \\\"description\\\":\\\"${description_input}\\\"}\"" "${gapps_url}?action=update&table=Comment&id=${comment_id_edit}")
+    echo "${update_feedback}" | jq
+}
+
+function comment_delete_pjtodo() {
+    store_project_pjtodo
+    filtered_project_string=$(echo -e ${all_project_string} | gum filter --indicator=">" --header="Select Project: ID | Project Name | Path")
+    filtered_project_array=(${filtered_project_string})
+    filtered_project_id=${filtered_project_array[0]}
+    filtered_project_name=${all_project_array["${filtered_project_id},project_name"]}
+    store_todo_pjtodo "${filtered_project_id}"
+    if [[ ${all_todo_string} == '' ]]
+    then
+        echo 'No Project ToDo Found!'
+        exit
+    fi
+    filtered_todo_string=$(echo -e ${all_todo_string} | gum filter --indicator=">" --header="(ToDo) ${filtered_project_name}: ID | Category | Status | Summary")
+    filtered_todo_array=(${filtered_todo_string})
+    filtered_todo_id=${filtered_todo_array[0]}
+
+    store_comment_pjtodo 'view' ${filtered_project_id} ${filtered_todo_id}
+    filtered_comment_string=$(echo -e ${all_comment_string} | gum filter --indicator=">" --header="(${filtered_todo_id}/Comment) ${filtered_project_name}: ID | Created at | Summary")
+    filtered_comment_array=(${filtered_comment_string})
+    filtered_comment_id=${filtered_comment_array[0]}
+
+    comment_id_delete=${all_comment_array["${filtered_comment_id},id"]}
+    project_id_comment=${all_comment_array["${filtered_comment_id},project_id"]}
+    todo_id_comment=${all_comment_array["${filtered_comment_id},todo_id"]}
+    comment_created_at=${all_comment_array["${filtered_comment_id},created_at"]}
+    comment_summary=${all_comment_array["${filtered_comment_id},summary"]}
+    comment_description=${all_comment_array["${filtered_comment_id},description"]}
+
+    project_name_get=${all_project_array["${project_id_comment},project_name"]}
+    todo_category=${all_todo_array["${todo_id_comment},category"]}
+    todo_created_at=${all_todo_array["${todo_id_comment},created_at"]}
+    todo_completed_at=${all_todo_array["${todo_id_comment},completed_at"]}
+    todo_summary=${all_todo_array["${todo_id_comment},summary"]}
+    todo_description=${all_todo_array["${todo_id_comment},description"]}
+    todo_status=${all_todo_array["${todo_id_comment},status"]}
+
+    echo "ToDo Details ->"
+    show_todo="KEY\tVALUE\n"
+    show_todo+="ID\t${todo_id_comment}\n"
+    show_todo+="Project Name\t${project_name_get}\n"
+    show_todo+="Summary\t${todo_summary}\n"
+    show_todo+="Created at\t${todo_created_at}\n"
+    show_todo+="Completed at\t${todo_completed_at}\n"
+    show_todo+="Category\t${todo_category}\n"
+    show_todo+="Status\t${todo_status}\n"
+    printf "${show_todo}" | prettytable 2
+    echo -e "ToDo Description: \n${todo_description}\n"
+
+    echo "ToDo Attachment Details ->"
+    show_comment="KEY\tVALUE\n"
+    show_comment+="ID\t${comment_id}\n"
+    show_comment+="Comment Summary\t${comment_summary}\n"
+    show_comment+="Created at\t${comment_created_at}\n"
+    printf "${show_comment}" | prettytable 2
+    echo -e "Comment Description: \n${comment_description}"
+
+    confirm_delete=$(gum confirm --default="No" "Delete This ToDo Comment?" && echo "yes" || echo "no")
+    if [[ ${confirm_delete} == 'yes' ]]
+    then
+        delete_feedback=$(gum spin --spinner dot --title "Deleting ToDo Comment (ID-${comment_id_delete})..." --show-output -- curl -L -H "application/json" -d '' "${gapps_url}?action=delete&table=Comment&id=${comment_id_delete}")
         echo "${delete_feedback}" | jq
     fi
 }
