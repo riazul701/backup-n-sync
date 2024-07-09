@@ -16,3 +16,7 @@
 ## Charmbracelet-Gum
 
 * In Charmbracelet-Gum textarea, do not use Keyboard-Enter / Line-Feed (LF) / Carriage-Return-Line-Feed (CRLF), because it breaks Curl code, instead use '\n' character.
+
+## Known Problems
+
+* Date stores correctly, but does not show properly when get from api. Use this format "01-01-2000D" OR "01-01-2000D12:24:48".

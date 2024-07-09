@@ -3029,11 +3029,11 @@ function project_view_pjtodo() {
     store_project_pjtodo
     filtered_project_string=$(echo -e ${all_project_string} | gum filter --indicator=">" --header="Select Project To Edit: ID | Project Name | Path")
     filtered_project_array=(${filtered_project_string})
-    filtered_id=${filtered_project_array[0]}
-    project_id_get=${all_project_array["${filtered_id},id"]}
-    project_name_get=${all_project_array["${filtered_id},project_name"]}
-    path_get=${all_project_array["${filtered_id},path"]}
-    about_get=${all_project_array["${filtered_id},about"]}
+    filtered_project_id=${filtered_project_array[0]}
+    project_id_get=${all_project_array["${filtered_project_id},id"]}
+    project_name_get=${all_project_array["${filtered_project_id},project_name"]}
+    path_get=${all_project_array["${filtered_project_id},path"]}
+    about_get=${all_project_array["${filtered_project_id},about"]}
     echo "Project Details ->"
     project_show="KEY\tVALUE\n"
     project_show+="ID\t${project_id_get}\n"
@@ -3057,11 +3057,11 @@ function project_edit_pjtodo() {
     store_project_pjtodo
     filtered_project_string=$(echo -e ${all_project_string} | gum filter --indicator=">" --header="Select Project To Edit: ID | Project Name | Path")
     filtered_project_array=(${filtered_project_string})
-    filtered_id=${filtered_project_array[0]}
-    project_id_edit=${all_project_array["${filtered_id},id"]}
-    project_name_edit=${all_project_array["${filtered_id},project_name"]}
-    path_edit=${all_project_array["${filtered_id},path"]}
-    about_edit=${all_project_array["${filtered_id},about"]}
+    filtered_project_id=${filtered_project_array[0]}
+    project_id_edit=${all_project_array["${filtered_project_id},id"]}
+    project_name_edit=${all_project_array["${filtered_project_id},project_name"]}
+    path_edit=${all_project_array["${filtered_project_id},path"]}
+    about_edit=${all_project_array["${filtered_project_id},about"]}
     
     echo "Edit Project ->"
     project_name_input=$(escapejc "$(gum input --header="Enter Project Name" --placeholder="Write Project Name"  --value="${project_name_edit}")")
@@ -3076,11 +3076,11 @@ function project_delete_pjtodo() {
     store_project_pjtodo
     filtered_project_string=$(echo -e ${all_project_string} | gum filter --indicator=">" --header="Select Project To Delete: ID | Project Name | Path")
     filtered_project_array=(${filtered_project_string})
-    filtered_id=${filtered_project_array[0]}
-    project_id_delete=${all_project_array["${filtered_id},id"]}
-    project_name_delete=${all_project_array["${filtered_id},project_name"]}
-    path_delete=${all_project_array["${filtered_id},path"]}
-    about_delete=${all_project_array["${filtered_id},about"]}
+    filtered_project_id=${filtered_project_array[0]}
+    project_id_delete=${all_project_array["${filtered_project_id},id"]}
+    project_name_delete=${all_project_array["${filtered_project_id},project_name"]}
+    path_delete=${all_project_array["${filtered_project_id},path"]}
+    about_delete=${all_project_array["${filtered_project_id},about"]}
     echo "Delete Project ->"
     project_show="  KEY\tVALUE\n"
     project_show+="  ID\t${project_id_delete}\n"
@@ -3098,15 +3098,15 @@ function project_delete_pjtodo() {
 }
 
 function todo_view_pjtodo() {
-    filtered_id=$1
-    todo_id_get=${all_todo_array["${filtered_id},id"]}
-    project_id_get=${all_todo_array["${filtered_id},project_id"]}
-    category_get=${all_todo_array["${filtered_id},category"]}
-    created_at_get=${all_todo_array["${filtered_id},created_at"]}
-    completed_at_get=${all_todo_array["${filtered_id},completed_at"]}
-    summary_get=${all_todo_array["${filtered_id},summary"]}
-    description_get=${all_todo_array["${filtered_id},description"]}
-    status_get=${all_todo_array["${filtered_id},status"]}
+    filtered_todo_id=$1
+    todo_id_get=${all_todo_array["${filtered_todo_id},id"]}
+    project_id_get=${all_todo_array["${filtered_todo_id},project_id"]}
+    category_get=${all_todo_array["${filtered_todo_id},category"]}
+    created_at_get=${all_todo_array["${filtered_todo_id},created_at"]}
+    completed_at_get=${all_todo_array["${filtered_todo_id},completed_at"]}
+    summary_get=${all_todo_array["${filtered_todo_id},summary"]}
+    description_get=${all_todo_array["${filtered_todo_id},description"]}
+    status_get=${all_todo_array["${filtered_todo_id},status"]}
     project_name_get=${all_project_array["${project_id_get},project_name"]}
 
     store_attachment_pjtodo 'view' ${project_id_get} ${todo_id_get}
@@ -3206,8 +3206,8 @@ function todo_view_filter_pjtodo() {
         filtered_todo_string=$(echo -e ${todo_completed_string} | gum filter --indicator=">" --header="ToDo View: ID | Project Name | Category | Status | Summary")
     fi
     filtered_todo_array=(${filtered_todo_string})
-    filtered_id=${filtered_todo_array[0]}
-    todo_view_pjtodo ${filtered_id}
+    filtered_todo_id=${filtered_todo_array[0]}
+    todo_view_pjtodo ${filtered_todo_id}
 }
 
 function todo_history_pjtodo() {
@@ -3324,6 +3324,82 @@ function todo_history_pjtodo() {
         echo -e "${completed_todo_list}"
     else
         echo -e "${all_todo_list}"
+    fi
+}
+
+function todo_add_pjtodo() {
+    store_project_pjtodo
+    filtered_project_string=$(echo -e ${all_project_string} | gum filter --indicator=">" --header="Select Project To View: ID | Project Name | Path")
+    filtered_project_array=(${filtered_project_string})
+    project_id_input=${filtered_project_array[0]}
+    echo "Add Project ToDo ->"
+    category_input=$(escapejc "$(gum choose --header="Select ToDo Category" "todo" "feature" "bug")")
+    created_at_input=$(escapejc "$(gum input --header="Enter ToDo Create Date" --placeholder="Write ToDo Create Date")")
+    completed_at_input=$(escapejc "$(gum input --header="Enter ToDo Complete Date" --placeholder="Write ToDo Complete Date")")
+    summary_input=$(escapejc "$(gum input --header="Enter ToDo Summary" --placeholder="Write ToDo Summary")")
+    description_input=$(escapejc "$(gum write --header="Enter ToDo Description" --placeholder="Write ToDo Description")")
+    status_input=$(escapejc "$(gum choose --header="Select ToDo Status" "remain" "working" "completed")")
+
+    insert_feedback=$(gum spin --spinner dot --title "Adding Project ToDo..." --show-output -- curl -L -H "application/json" --silent --no-progress-meter --form "data=\"{\\\"project_id\\\":\\\"${project_id_input}\\\", \\\"category\\\": \\\"${category_input}\\\", \\\"created_at\\\":\\\"${created_at_input}\\\", \\\"completed_at\\\":\\\"${completed_at_input}\\\", \\\"summary\\\":\\\"${summary_input}\\\", \\\"description\\\":\\\"${description_input}\\\", \\\"status\\\":\\\"${status_input}\\\"}\"" "${gapps_url}?action=insert&table=ToDo")
+    echo "${insert_feedback}" | jq
+}
+
+function todo_edit_pjtodo() {
+    store_project_pjtodo
+    filtered_project_string=$(echo -e ${all_project_string} | gum filter --indicator=">" --header="Select Project To View: ID | Project Name | Path")
+    filtered_project_array=(${filtered_project_string})
+    filtered_project_id=${filtered_project_array[0]}
+    store_todo_pjtodo "${filtered_project_id}"
+    if [[ ${all_todo_string} == '' ]]
+    then
+        echo 'No Project ToDo Found!'
+        exit
+    fi
+    filtered_todo_string=$(echo -e ${all_todo_string} | gum filter --indicator=">" --header="ToDo View: ID | Project Name | Category | Status | Summary")
+    filtered_todo_array=(${filtered_todo_string})
+    filtered_todo_id=${filtered_todo_array[0]}
+
+    todo_id_edit=${all_todo_array["${filtered_todo_id},id"]}
+    project_id_edit=${all_todo_array["${filtered_todo_id},project_id"]}
+    category_edit=${all_todo_array["${filtered_todo_id},category"]}
+    created_at_edit=${all_todo_array["${filtered_todo_id},created_at"]}
+    completed_at_edit=${all_todo_array["${filtered_todo_id},completed_at"]}
+    summary_edit=${all_todo_array["${filtered_todo_id},summary"]}
+    description_edit=${all_todo_array["${filtered_todo_id},description"]}
+    status_edit=${all_todo_array["${filtered_todo_id},status"]}
+    echo "Edit Project ToDo ->"
+    category_input=$(escapejc "$(gum choose --header="Select ToDo Category" --selected="${category_edit}" "todo" "feature" "bug")")
+    created_at_input=$(escapejc "$(gum input --header="Enter ToDo Create Date" --placeholder="Write ToDo Create Date"  --value="${created_at_edit}")")
+    completed_at_input=$(escapejc "$(gum input --header="Enter ToDo Complete Date" --placeholder="Write ToDo Complete Date"  --value="${completed_at_edit}")")
+    summary_input=$(escapejc "$(gum input --header="Enter ToDo Summary" --placeholder="Write ToDo Summary"  --value="${summary_edit}")")
+    description_input=$(escapejc "$(gum write --header="Enter ToDo Description" --placeholder="Write ToDo Description" --value="${description_edit}")")
+    status_input=$(escapejc "$(gum choose --header="Select ToDo Status" --selected="${status_edit}" "remain" "working" "completed")")
+
+    update_feedback=$(gum spin --spinner dot --title "Updating Project ToDo (ID-${todo_id_edit})..." --show-output -- curl -L -H "application/json" --silent --no-progress-meter --form "data=\"{\\\"category\\\":\\\"${category_input}\\\", \\\"created_at\\\": \\\"${created_at_input}\\\", \\\"completed_at\\\":\\\"${completed_at_input}\\\", \\\"summary\\\":\\\"${summary_input}\\\", \\\"description\\\":\\\"${description_input}\\\", \\\"status\\\":\\\"${status_input}\\\"}\"" "${gapps_url}?action=update&table=ToDo&id=${todo_id_edit}")
+    echo "${update_feedback}" | jq
+}
+
+function todo_delete_pjtodo() {
+    store_project_pjtodo
+    filtered_project_string=$(echo -e ${all_project_string} | gum filter --indicator=">" --header="Select Project To View: ID | Project Name | Path")
+    filtered_project_array=(${filtered_project_string})
+    filtered_project_id=${filtered_project_array[0]}
+    store_todo_pjtodo "${filtered_project_id}"
+    if [[ ${all_todo_string} == '' ]]
+    then
+        echo 'No Project ToDo Found!'
+        exit
+    fi
+    filtered_todo_string=$(echo -e ${all_todo_string} | gum filter --indicator=">" --header="ToDo View: ID | Project Name | Category | Status | Summary")
+    filtered_todo_array=(${filtered_todo_string})
+    filtered_todo_id=${filtered_todo_array[0]}
+
+    todo_view_pjtodo ${filtered_todo_id}
+    confirm_delete=$(gum confirm --default="No" "Delete This Project ToDo?" && echo "yes" || echo "no")
+    if [[ ${confirm_delete} == 'yes' ]]
+    then
+        delete_feedback=$(gum spin --spinner dot --title "Deleting Project ToDo (ID-${filtered_todo_id})..." --show-output -- curl -L -H "application/json" -d '' "${gapps_url}?action=delete&table=ToDo&id=${filtered_todo_id}")
+        echo "${delete_feedback}" | jq
     fi
 }
 
