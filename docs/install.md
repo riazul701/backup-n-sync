@@ -1,5 +1,9 @@
 # Script Requirements
 
+## BASH Version (Tested)
+
+* GNU bash, version 5.1.4(1)-release (x86_64-pc-linux-gnu)
+
 ## Required Packages for Script
 
 ### Both Linux and Windows OS

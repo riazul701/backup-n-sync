@@ -181,7 +181,7 @@ repo_file_path="/c/ProgramData/snb/backup-n-sync-config"
 repo_json_file="${repo_file_path}/repository-list.json"
 source "${repo_file_path}/sync-gapps-url"
 
-base_config_data=$(cat "${repo_json_file}" | jq -r '.repo_config|to_entries|.[1:29]|map("\(.key)='\''\(.value)'\''")|.[]')
+base_config_data=$(cat "${repo_json_file}" | jq -r '.repo_config|to_entries|.[1:30]|map("\(.key)='\''\(.value)'\''")|.[]')
 
 repo_config_data=$(cat "${repo_json_file}" | jq -r '.restic_git_repo|map("
 if [[ '\''\(.sync_type)'\'' == '\''restic-only'\'' || '\''\(.sync_type)'\'' == '\''restic-git'\'' ]]; then
@@ -286,6 +286,7 @@ function rbase_list_config() {
     gist_temporary_folder|[}|${gist_temporary_folder}\n
     command_reference_file|[}|${command_reference_file}\n
     download_location|[}|${download_location}\n
+    todo_attachment_rclone|[}|${todo_attachment_rclone}\n
     "
     printf "${show_base_info}" | column --table --separator "|[}|"
     echo "    project_drive_psd_identification" "      " $(echo ${project_drive_psd_identification} | jq -R)
@@ -300,7 +301,7 @@ function rbase_list_config() {
 }
 
 function rbase_edit_config() {
-    rbase_key_list="git_uncommitted_sync_remote_base\ndatabase_sync_remote_base\ndb_sync_local_base_path\ndb_archive_base_path\nenable_db_archive\ndb_host_name\nwindows_editor\nlinux_editor\nrestore_restic_git_base_path\nsync_restic_repo_base_path\nsync_restic_repo_password\ndesktop_exclude_base_path\nserver_exclude_base_path\nproject_drive_path\ndocument_drive_path\nproject_drive_repo_name\ndocument_drive_repo_name\nproject_drive_psd_identification\ndocument_drive_psd_identification\ndrive_restic_repo_password\ngist_list_limit\nmax_gist_create\ngist_temporary_file\ngist_temporary_folder\ncommand_reference_file\ndownload_location"
+    rbase_key_list="git_uncommitted_sync_remote_base\ndatabase_sync_remote_base\ndb_sync_local_base_path\ndb_archive_base_path\nenable_db_archive\ndb_host_name\nwindows_editor\nlinux_editor\nrestore_restic_git_base_path\nsync_restic_repo_base_path\nsync_restic_repo_password\ndesktop_exclude_base_path\nserver_exclude_base_path\nproject_drive_path\ndocument_drive_path\nproject_drive_repo_name\ndocument_drive_repo_name\nproject_drive_psd_identification\ndocument_drive_psd_identification\ndrive_restic_repo_password\ngist_list_limit\nmax_gist_create\ngist_temporary_file\ngist_temporary_folder\ncommand_reference_file\ndownload_location\ntodo_attachment_rclone"
     selected_key=$(echo -e ${rbase_key_list} | gum filter --indicator=">" --header="Select Repository Base Info To Edit")
     
     get_key_value=$(cat "${repo_json_file}" | jq -r ".repo_config .${selected_key}")
@@ -2945,7 +2946,7 @@ all_todo_array['\''\(.id),summary'\'']='\''\(.summary)'\'';
 all_todo_array['\''\(.id),description'\'']='\''\(.description)'\'';
 all_todo_array['\''\(.id),status'\'']='\''\(.status)'\'';
 TODO_ID_COLL+=('\''\(.id)'\'');
-all_todo_string+=\"\(.id)\\t${all_project_array['\''\(.project_id),project_name'\'']}\\t\(.category)\\t\(.status)\\t\(.summary)\\n\";
+all_todo_string+=\"\(.id)\\t\(.category)\\t\(.status)\\t\(.summary)\\n\";
 ")|.[]')
     eval "${get_todo_array}"
     all_todo_string=${all_todo_string%??}
@@ -2983,7 +2984,7 @@ all_attachment_array['\''\(.id),description'\'']='\''\(.description)'\'';
 all_attachment_array['\''\(.id),rclone_name'\'']='\''\(.rclone_name)'\'';
 all_attachment_array['\''\(.id),rclone_path'\'']='\''\(.rclone_path)'\'';
 ATTACHMENT_ID_COLL+=('\''\(.id)'\'');
-all_attachment_string+=\"\(.id)\\t${all_project_array['\''\(.project_id),project_name'\'']}\\t\(.todo_id)\\t${all_todo_array['\''\(.todo_id),category'\'']}\\t${all_todo_array['\''\(.todo_id),status'\'']}\\t\(.attachment_name)\\n\";
+all_attachment_string+=\"\(.id)\\t\(.todo_id)\\t\(.attachment_name)\\n\";
 ")|.[]')
     eval "${get_attachment_array}"
     all_attachment_string=${all_attachment_string%??}
@@ -3116,13 +3117,13 @@ function todo_view_pjtodo() {
     todo_show="KEY\tVALUE\n"
     todo_show+="ID\t${todo_id_get}\n"
     todo_show+="Project Name\t${project_name_get}\n"
-    todo_show+="Category\t${category_get}\n"
-    todo_show+="Created At\t${created_at_get}\n"
-    todo_show+="Completed At\t${completed_at_get}\n"
     todo_show+="Summary\t${summary_get}\n"
+    todo_show+="Created at\t${created_at_get}\n"
+    todo_show+="Completed at\t${completed_at_get}\n"
+    todo_show+="Category\t${category_get}\n"
     todo_show+="Status\t${status_get}\n"
     printf "${todo_show}" | prettytable 2
-    echo -e "ToDo Description: ${description_get}\n"
+    echo -e "ToDo Description: \n${description_get}"
 
     attachment_show="ATTACHMENT LIST: \n\n"
     comment_show="COMMENT LIST: \n\n"
@@ -3160,9 +3161,10 @@ function todo_view_pjtodo() {
 
 function todo_view_filter_pjtodo() {
     store_project_pjtodo
-    filtered_project_string=$(echo -e ${all_project_string} | gum filter --indicator=">" --header="Select Project To View: ID | Project Name | Path")
+    filtered_project_string=$(echo -e ${all_project_string} | gum filter --indicator=">" --header="Select Project: ID | Project Name | Path")
     filtered_project_array=(${filtered_project_string})
     filtered_project_id=${filtered_project_array[0]}
+    filtered_project_name=${all_project_array["${filtered_project_id},project_name"]}
     store_todo_pjtodo "${filtered_project_id}"
 
     filter_by="$1" # all/working/remain/completed
@@ -3194,16 +3196,16 @@ function todo_view_filter_pjtodo() {
 
     if [[ ${filter_by} == 'all' ]]
     then
-        filtered_todo_string=$(echo -e ${all_todo_string} | gum filter --indicator=">" --header="ToDo View: ID | Project Name | Category | Status | Summary")
+        filtered_todo_string=$(echo -e ${all_todo_string} | gum filter --indicator=">" --header="(ToDo) ${filtered_project_name}: ID | Category | Status | Summary")
     elif [[ ${filter_by} == 'remain' ]]
     then
-        filtered_todo_string=$(echo -e ${todo_remain_string} | gum filter --indicator=">" --header="ToDo View: ID | Project Name | Category | Status | Summary")
+        filtered_todo_string=$(echo -e ${todo_remain_string} | gum filter --indicator=">" --header="(ToDo) ${filtered_project_name}: ID | Category | Status | Summary")
     elif [[ ${filter_by} == 'working' ]]
     then
-        filtered_todo_string=$(echo -e ${todo_working_string} | gum filter --indicator=">" --header="ToDo View: ID | Project Name | Category | Status | Summary")
+        filtered_todo_string=$(echo -e ${todo_working_string} | gum filter --indicator=">" --header="(ToDo) ${filtered_project_name}: ID | Category | Status | Summary")
     elif [[ ${filter_by} == 'completed' ]]
     then
-        filtered_todo_string=$(echo -e ${todo_completed_string} | gum filter --indicator=">" --header="ToDo View: ID | Project Name | Category | Status | Summary")
+        filtered_todo_string=$(echo -e ${todo_completed_string} | gum filter --indicator=">" --header="(ToDo) ${filtered_project_name}: ID | Category | Status | Summary")
     fi
     filtered_todo_array=(${filtered_todo_string})
     filtered_todo_id=${filtered_todo_array[0]}
@@ -3212,7 +3214,7 @@ function todo_view_filter_pjtodo() {
 
 function todo_history_pjtodo() {
     store_project_pjtodo
-    filtered_project_string=$(echo -e ${all_project_string} | gum filter --indicator=">" --header="Select Project To View: ID | Project Name | Path")
+    filtered_project_string=$(echo -e ${all_project_string} | gum filter --indicator=">" --header="Select Project: ID | Project Name | Path")
     filtered_project_array=(${filtered_project_string})
     filtered_project_id=${filtered_project_array[0]}
     store_todo_pjtodo "${filtered_project_id}"
@@ -3329,7 +3331,7 @@ function todo_history_pjtodo() {
 
 function todo_add_pjtodo() {
     store_project_pjtodo
-    filtered_project_string=$(echo -e ${all_project_string} | gum filter --indicator=">" --header="Select Project To View: ID | Project Name | Path")
+    filtered_project_string=$(echo -e ${all_project_string} | gum filter --indicator=">" --header="Select Project: ID | Project Name | Path")
     filtered_project_array=(${filtered_project_string})
     project_id_input=${filtered_project_array[0]}
     echo "Add Project ToDo ->"
@@ -3346,16 +3348,17 @@ function todo_add_pjtodo() {
 
 function todo_edit_pjtodo() {
     store_project_pjtodo
-    filtered_project_string=$(echo -e ${all_project_string} | gum filter --indicator=">" --header="Select Project To View: ID | Project Name | Path")
+    filtered_project_string=$(echo -e ${all_project_string} | gum filter --indicator=">" --header="Select Project: ID | Project Name | Path")
     filtered_project_array=(${filtered_project_string})
     filtered_project_id=${filtered_project_array[0]}
+    filtered_project_name=${all_project_array["${filtered_project_id},project_name"]}
     store_todo_pjtodo "${filtered_project_id}"
     if [[ ${all_todo_string} == '' ]]
     then
         echo 'No Project ToDo Found!'
         exit
     fi
-    filtered_todo_string=$(echo -e ${all_todo_string} | gum filter --indicator=">" --header="ToDo View: ID | Project Name | Category | Status | Summary")
+    filtered_todo_string=$(echo -e ${all_todo_string} | gum filter --indicator=">" --header="(ToDo) ${filtered_project_name}: ID | Category | Status | Summary")
     filtered_todo_array=(${filtered_todo_string})
     filtered_todo_id=${filtered_todo_array[0]}
 
@@ -3381,16 +3384,17 @@ function todo_edit_pjtodo() {
 
 function todo_delete_pjtodo() {
     store_project_pjtodo
-    filtered_project_string=$(echo -e ${all_project_string} | gum filter --indicator=">" --header="Select Project To View: ID | Project Name | Path")
+    filtered_project_string=$(echo -e ${all_project_string} | gum filter --indicator=">" --header="Select Project: ID | Project Name | Path")
     filtered_project_array=(${filtered_project_string})
     filtered_project_id=${filtered_project_array[0]}
+    filtered_project_name=${all_project_array["${filtered_project_id},project_name"]}
     store_todo_pjtodo "${filtered_project_id}"
     if [[ ${all_todo_string} == '' ]]
     then
         echo 'No Project ToDo Found!'
         exit
     fi
-    filtered_todo_string=$(echo -e ${all_todo_string} | gum filter --indicator=">" --header="ToDo View: ID | Project Name | Category | Status | Summary")
+    filtered_todo_string=$(echo -e ${all_todo_string} | gum filter --indicator=">" --header="(ToDo) ${filtered_project_name}: ID | Category | Status | Summary")
     filtered_todo_array=(${filtered_todo_string})
     filtered_todo_id=${filtered_todo_array[0]}
 
@@ -3399,6 +3403,201 @@ function todo_delete_pjtodo() {
     if [[ ${confirm_delete} == 'yes' ]]
     then
         delete_feedback=$(gum spin --spinner dot --title "Deleting Project ToDo (ID-${filtered_todo_id})..." --show-output -- curl -L -H "application/json" -d '' "${gapps_url}?action=delete&table=ToDo&id=${filtered_todo_id}")
+        echo "${delete_feedback}" | jq
+    fi
+}
+
+function attachment_view_pjtodo() {
+    store_project_pjtodo
+    filtered_project_string=$(echo -e ${all_project_string} | gum filter --indicator=">" --header="Select Project: ID | Project Name | Path")
+    filtered_project_array=(${filtered_project_string})
+    filtered_project_id=${filtered_project_array[0]}
+    filtered_project_name=${all_project_array["${filtered_project_id},project_name"]}
+    store_todo_pjtodo "${filtered_project_id}"
+    if [[ ${all_todo_string} == '' ]]
+    then
+        echo 'No Project ToDo Found!'
+        exit
+    fi
+    filtered_todo_string=$(echo -e ${all_todo_string} | gum filter --indicator=">" --header="(ToDo) ${filtered_project_name}: ID | Category | Status | Summary")
+    filtered_todo_array=(${filtered_todo_string})
+    filtered_todo_id=${filtered_todo_array[0]}
+
+    store_attachment_pjtodo 'view' ${filtered_project_id} ${filtered_todo_id}
+    filtered_attachment_string=$(echo -e ${all_attachment_string} | gum filter --indicator=">" --header="(Attachment) ${filtered_project_name}: ID | ToDo ID | Attachment Name")
+    filtered_attachment_array=(${filtered_attachment_string})
+    filtered_attachment_id=${filtered_attachment_array[0]}
+
+    attachment_id=${all_attachment_array["${filtered_attachment_id},id"]}
+    project_id_attach=${all_attachment_array["${filtered_attachment_id},project_id"]}
+    todo_id_attach=${all_attachment_array["${filtered_attachment_id},todo_id"]}
+    attachment_created_at=${all_attachment_array["${filtered_attachment_id},created_at"]}
+    attachment_name=${all_attachment_array["${filtered_attachment_id},attachment_name"]}
+    attachment_description=${all_attachment_array["${filtered_attachment_id},description"]}
+    attachment_rclone_name=${all_attachment_array["${filtered_attachment_id},rclone_name"]}
+    attachment_rclone_path=${all_attachment_array["${filtered_attachment_id},rclone_path"]}
+
+    project_name_get=${all_project_array["${project_id_attach},project_name"]}
+    todo_category=${all_todo_array["${todo_id_attach},category"]}
+    todo_created_at=${all_todo_array["${todo_id_attach},created_at"]}
+    todo_completed_at=${all_todo_array["${todo_id_attach},completed_at"]}
+    todo_summary=${all_todo_array["${todo_id_attach},summary"]}
+    todo_description=${all_todo_array["${todo_id_attach},description"]}
+    todo_status=${all_todo_array["${todo_id_attach},status"]}
+
+    echo "ToDo Details ->"
+    show_todo="KEY\tVALUE\n"
+    show_todo+="ID\t${todo_id_attach}\n"
+    show_todo+="Project Name\t${project_name_get}\n"
+    show_todo+="Summary\t${todo_summary}\n"
+    show_todo+="Created at\t${todo_created_at}\n"
+    show_todo+="Completed at\t${todo_completed_at}\n"
+    show_todo+="Category\t${todo_category}\n"
+    show_todo+="Status\t${todo_status}\n"
+    printf "${show_todo}" | prettytable 2
+    echo -e "ToDo Description: \n${todo_description}\n"
+
+    echo "ToDo Attachment Details ->"
+    show_attachment="KEY\tVALUE\n"
+    show_attachment+="ID\t${attachment_id}\n"
+    show_attachment+="Attachment Name\t${attachment_name}\n"
+    show_attachment+="Created at\t${todo_created_at}\n"
+    show_attachment+="Rclone Name\t${attachment_rclone_name}\n"
+    show_attachment+="Rclone Path\t${attachment_rclone_path}\n"
+    printf "${show_attachment}" | prettytable 2
+    echo -e "Attachment Description: \n${attachment_description}"
+}
+
+function attachment_add_pjtodo() {
+    store_project_pjtodo
+    filtered_project_string=$(echo -e ${all_project_string} | gum filter --indicator=">" --header="Select Project: ID | Project Name | Path")
+    filtered_project_array=(${filtered_project_string})
+    filtered_project_id=${filtered_project_array[0]}
+    filtered_project_name=${all_project_array["${filtered_project_id},project_name"]}
+    store_todo_pjtodo "${filtered_project_id}"
+    if [[ ${all_todo_string} == '' ]]
+    then
+        echo 'No Project ToDo Found!'
+        exit
+    fi
+    filtered_todo_string=$(echo -e ${all_todo_string} | gum filter --indicator=">" --header="(ToDo) ${filtered_project_name}: ID | Category | Status | Summary")
+    filtered_todo_array=(${filtered_todo_string})
+    filtered_todo_id=${filtered_todo_array[0]}
+
+    echo "Add ToDo Attachment ->"
+    created_at_input=$(escapejc "$(gum input --header="Enter Attachment Create Date" --placeholder="Write Attachment Create Date")")
+    attachment_name_input=$(escapejc "$(gum input --header="Enter Attachment Name" --placeholder="Write Attachment Name")")
+    description_input=$(escapejc "$(gum write --header="Enter Attachment Description" --placeholder="Write Attachment Description")")
+    rclone_name_input="${todo_attachment_rclone}"
+    rclone_path_input=""
+
+    insert_feedback=$(gum spin --spinner dot --title "Adding ToDo Attachment..." --show-output -- curl -L -H "application/json" --silent --no-progress-meter --form "data=\"{\\\"project_id\\\":\\\"${filtered_project_id}\\\", \\\"todo_id\\\": \\\"${filtered_todo_id}\\\", \\\"created_at\\\":\\\"${created_at_input}\\\", \\\"attachment_name\\\":\\\"${attachment_name_input}\\\", \\\"description\\\":\\\"${description_input}\\\", \\\"rclone_name\\\":\\\"${rclone_name_input}\\\", \\\"rclone_path\\\":\\\"${rclone_path_input}\\\"}\"" "${gapps_url}?action=insert&table=Attachment")
+    echo "${insert_feedback}" | jq
+}
+
+function attachment_edit_pjtodo() {
+    store_project_pjtodo
+    filtered_project_string=$(echo -e ${all_project_string} | gum filter --indicator=">" --header="Select Project: ID | Project Name | Path")
+    filtered_project_array=(${filtered_project_string})
+    filtered_project_id=${filtered_project_array[0]}
+    filtered_project_name=${all_project_array["${filtered_project_id},project_name"]}
+    store_todo_pjtodo "${filtered_project_id}"
+    if [[ ${all_todo_string} == '' ]]
+    then
+        echo 'No Project ToDo Found!'
+        exit
+    fi
+    filtered_todo_string=$(echo -e ${all_todo_string} | gum filter --indicator=">" --header="(ToDo) ${filtered_project_name}: ID | Category | Status | Summary")
+    filtered_todo_array=(${filtered_todo_string})
+    filtered_todo_id=${filtered_todo_array[0]}
+
+    store_attachment_pjtodo 'view' ${filtered_project_id} ${filtered_todo_id}
+    filtered_attachment_string=$(echo -e ${all_attachment_string} | gum filter --indicator=">" --header="(Attachment) ${filtered_project_name}: ID | ToDo ID | Attachment Name")
+    filtered_attachment_array=(${filtered_attachment_string})
+    filtered_attachment_id=${filtered_attachment_array[0]}
+
+    attachment_id_edit=${all_attachment_array["${filtered_attachment_id},id"]}
+    project_id_edit=${all_attachment_array["${filtered_attachment_id},project_id"]}
+    todo_id_edit=${all_attachment_array["${filtered_attachment_id},todo_id"]}
+    created_at_edit=${all_attachment_array["${filtered_attachment_id},created_at"]}
+    attachment_name_edit=${all_attachment_array["${filtered_attachment_id},attachment_name"]}
+    description_edit=${all_attachment_array["${filtered_attachment_id},description"]}
+    rclone_name_edit=${all_attachment_array["${filtered_attachment_id},rclone_name"]}
+    rclone_path_edit=${all_attachment_array["${filtered_attachment_id},rclone_path"]}
+
+    echo "Edit ToDo Attachment ->"
+    created_at_input=$(escapejc "$(gum input --header="Enter Attachment Create Date" --placeholder="Write Attachment Create Date" --value="${created_at_edit}")")
+    attachment_name_input=$(escapejc "$(gum input --header="Enter Attachment Name" --placeholder="Write Attachment Name" --value="${attachment_name_edit}")")
+    description_input=$(escapejc "$(gum write --header="Enter Attachment Description" --placeholder="Write Attachment Description" --value="${description_edit}")")
+
+    update_feedback=$(gum spin --spinner dot --title "Updating ToDo Attachment (ID-${attachment_id_edit})..." --show-output -- curl -L -H "application/json" --silent --no-progress-meter --form "data=\"{\\\"project_id\\\":\\\"${project_id_edit}\\\", \\\"todo_id\\\": \\\"${todo_id_edit}\\\", \\\"created_at\\\":\\\"${created_at_input}\\\", \\\"attachment_name\\\":\\\"${attachment_name_input}\\\", \\\"description\\\":\\\"${description_input}\\\", \\\"rclone_name\\\":\\\"${rclone_name_edit}\\\", \\\"rclone_path\\\":\\\"${rclone_path_edit}\\\"}\"" "${gapps_url}?action=update&table=Attachment&id=${attachment_id_edit}")
+    echo "${update_feedback}" | jq
+}
+
+function attachment_delete_pjtodo() {
+    store_project_pjtodo
+    filtered_project_string=$(echo -e ${all_project_string} | gum filter --indicator=">" --header="Select Project: ID | Project Name | Path")
+    filtered_project_array=(${filtered_project_string})
+    filtered_project_id=${filtered_project_array[0]}
+    filtered_project_name=${all_project_array["${filtered_project_id},project_name"]}
+    store_todo_pjtodo "${filtered_project_id}"
+    if [[ ${all_todo_string} == '' ]]
+    then
+        echo 'No Project ToDo Found!'
+        exit
+    fi
+    filtered_todo_string=$(echo -e ${all_todo_string} | gum filter --indicator=">" --header="(ToDo) ${filtered_project_name}: ID | Category | Status | Summary")
+    filtered_todo_array=(${filtered_todo_string})
+    filtered_todo_id=${filtered_todo_array[0]}
+
+    store_attachment_pjtodo 'view' ${filtered_project_id} ${filtered_todo_id}
+    filtered_attachment_string=$(echo -e ${all_attachment_string} | gum filter --indicator=">" --header="(Attachment) ${filtered_project_name}: ID | ToDo ID | Attachment Name")
+    filtered_attachment_array=(${filtered_attachment_string})
+    filtered_attachment_id=${filtered_attachment_array[0]}
+
+    attachment_id_delete=${all_attachment_array["${filtered_attachment_id},id"]}
+    project_id_attach=${all_attachment_array["${filtered_attachment_id},project_id"]}
+    todo_id_attach=${all_attachment_array["${filtered_attachment_id},todo_id"]}
+    attachment_created_at=${all_attachment_array["${filtered_attachment_id},created_at"]}
+    attachment_name=${all_attachment_array["${filtered_attachment_id},attachment_name"]}
+    attachment_description=${all_attachment_array["${filtered_attachment_id},description"]}
+    attachment_rclone_name=${all_attachment_array["${filtered_attachment_id},rclone_name"]}
+    attachment_rclone_path=${all_attachment_array["${filtered_attachment_id},rclone_path"]}
+
+    project_name_get=${all_project_array["${project_id_attach},project_name"]}
+    todo_category=${all_todo_array["${todo_id_attach},category"]}
+    todo_created_at=${all_todo_array["${todo_id_attach},created_at"]}
+    todo_completed_at=${all_todo_array["${todo_id_attach},completed_at"]}
+    todo_summary=${all_todo_array["${todo_id_attach},summary"]}
+    todo_description=${all_todo_array["${todo_id_attach},description"]}
+    todo_status=${all_todo_array["${todo_id_attach},status"]}
+
+    echo "ToDo Details ->"
+    show_todo="KEY\tVALUE\n"
+    show_todo+="ID\t${todo_id_attach}\n"
+    show_todo+="Project Name\t${project_name_get}\n"
+    show_todo+="Summary\t${todo_summary}\n"
+    show_todo+="Created at\t${todo_created_at}\n"
+    show_todo+="Completed at\t${todo_completed_at}\n"
+    show_todo+="Category\t${todo_category}\n"
+    show_todo+="Status\t${todo_status}\n"
+    printf "${show_todo}" | prettytable 2
+    echo -e "ToDo Description: \n${todo_description}\n"
+
+    echo "ToDo Attachment Details ->"
+    show_attachment="KEY\tVALUE\n"
+    show_attachment+="ID\t${attachment_id}\n"
+    show_attachment+="Attachment Name\t${attachment_name}\n"
+    show_attachment+="Created at\t${todo_created_at}\n"
+    show_attachment+="Rclone Name\t${attachment_rclone_name}\n"
+    show_attachment+="Rclone Path\t${attachment_rclone_path}\n"
+    printf "${show_attachment}" | prettytable 2
+    echo -e "Attachment Description: \n${attachment_description}"
+
+    confirm_delete=$(gum confirm --default="No" "Delete This ToDo Attachment?" && echo "yes" || echo "no")
+    if [[ ${confirm_delete} == 'yes' ]]
+    then
+        delete_feedback=$(gum spin --spinner dot --title "Deleting ToDo Attachment (ID-${attachment_id_delete})..." --show-output -- curl -L -H "application/json" -d '' "${gapps_url}?action=delete&table=Attachment&id=${attachment_id_delete}")
         echo "${delete_feedback}" | jq
     fi
 }
