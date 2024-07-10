@@ -202,6 +202,11 @@ sudo apt update && sudo apt install gum
     * [Package: libxxhash](https://repo.msys2.org/msys/x86_64/libxxhash-0.8.0-1-x86_64.pkg.tar.zst)
   * Open Git-Bash and check "rsync": `rsync --version`
 
+# Move To Path
+
+* Linux: `sudo cp jjk /usr/local/bin/jjk`
+* Windows (Git-Bash): `sudo cp jjk /usr/bin/jjk`
+
 # References
 
 * Installation

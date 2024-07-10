@@ -3424,7 +3424,7 @@ function attachment_view_pjtodo() {
     filtered_todo_id=${filtered_todo_array[0]}
 
     store_attachment_pjtodo 'view' ${filtered_project_id} ${filtered_todo_id}
-    filtered_attachment_string=$(echo -e ${all_attachment_string} | gum filter --indicator=">" --header="(${filtered_todo_id}/Attachment) ${filtered_project_name}: ID | Created at | Name")
+    filtered_attachment_string=$(echo -e ${all_attachment_string} | gum filter --indicator=">" --header="(${filtered_todo_id}/Attachment) ${filtered_project_name}: ID | Created at | Summary")
     filtered_attachment_array=(${filtered_attachment_string})
     filtered_attachment_id=${filtered_attachment_array[0]}
 
@@ -3432,7 +3432,7 @@ function attachment_view_pjtodo() {
     project_id_attach=${all_attachment_array["${filtered_attachment_id},project_id"]}
     todo_id_attach=${all_attachment_array["${filtered_attachment_id},todo_id"]}
     attachment_created_at=${all_attachment_array["${filtered_attachment_id},created_at"]}
-    attachment_name=${all_attachment_array["${filtered_attachment_id},attachment_name"]}
+    attachment_summary=${all_attachment_array["${filtered_attachment_id},summary"]}
     attachment_description=${all_attachment_array["${filtered_attachment_id},description"]}
     attachment_rclone_name=${all_attachment_array["${filtered_attachment_id},rclone_name"]}
     attachment_rclone_path=${all_attachment_array["${filtered_attachment_id},rclone_path"]}
@@ -3460,7 +3460,7 @@ function attachment_view_pjtodo() {
     echo "ToDo Attachment Details ->"
     show_attachment="KEY\tVALUE\n"
     show_attachment+="ID\t${attachment_id}\n"
-    show_attachment+="Attachment Name\t${attachment_name}\n"
+    show_attachment+="Attachment Name\t${attachment_summary}\n"
     show_attachment+="Created at\t${todo_created_at}\n"
     show_attachment+="Rclone Name\t${attachment_rclone_name}\n"
     show_attachment+="Rclone Path\t${attachment_rclone_path}\n"
@@ -3486,13 +3486,19 @@ function attachment_add_pjtodo() {
 
     echo "Add ToDo Attachment ->"
     created_at_input=$(escapejc "$(gum input --header="Enter Attachment Create Date" --placeholder="Write Attachment Create Date")")
-    attachment_name_input=$(escapejc "$(gum input --header="Enter Attachment Name" --placeholder="Write Attachment Name")")
+    summary_input=$(escapejc "$(gum input --header="Enter Attachment Name" --placeholder="Write Attachment Name")")
     description_input=$(escapejc "$(gum write --header="Enter Attachment Description" --placeholder="Write Attachment Description")")
-    rclone_name_input="${todo_attachment_rclone}"
-    rclone_path_input=""
+    uploaded_file="$(gum file /)"
+    remote_file_name=$(escapejc "${uploaded_file}")
+    remote_file_name=$(basename "${remote_file_name}")
+    rclone_name="${todo_attachment_rclone}"
+    rclone_path="todo/${filtered_project_id}/${filtered_todo_id}/${remote_file_name}"
 
-    insert_feedback=$(gum spin --spinner dot --title "Adding ToDo Attachment..." --show-output -- curl -L -H "application/json" --silent --no-progress-meter --form "data=\"{\\\"project_id\\\":\\\"${filtered_project_id}\\\", \\\"todo_id\\\": \\\"${filtered_todo_id}\\\", \\\"created_at\\\":\\\"${created_at_input}\\\", \\\"attachment_name\\\":\\\"${attachment_name_input}\\\", \\\"description\\\":\\\"${description_input}\\\", \\\"rclone_name\\\":\\\"${rclone_name_input}\\\", \\\"rclone_path\\\":\\\"${rclone_path_input}\\\"}\"" "${gapps_url}?action=insert&table=Attachment")
+    insert_feedback=$(gum spin --spinner dot --title "Adding ToDo Attachment..." --show-output -- curl -L -H "application/json" --silent --no-progress-meter --form "data=\"{\\\"project_id\\\":\\\"${filtered_project_id}\\\", \\\"todo_id\\\": \\\"${filtered_todo_id}\\\", \\\"created_at\\\":\\\"${created_at_input}\\\", \\\"summary\\\":\\\"${summary_input}\\\", \\\"description\\\":\\\"${description_input}\\\", \\\"rclone_name\\\":\\\"${rclone_name}\\\", \\\"rclone_path\\\":\\\"${rclone_path}\\\"}\"" "${gapps_url}?action=insert&table=Attachment")
     echo "${insert_feedback}" | jq
+
+    rclone mkdir "${rclone_name}todo/${filtered_project_id}/${filtered_todo_id}" --verbose
+    rclone copyto "${uploaded_file}" "${rclone_name}${rclone_path}" --progress
 }
 
 function attachment_edit_pjtodo() {
@@ -3512,7 +3518,7 @@ function attachment_edit_pjtodo() {
     filtered_todo_id=${filtered_todo_array[0]}
 
     store_attachment_pjtodo 'view' ${filtered_project_id} ${filtered_todo_id}
-    filtered_attachment_string=$(echo -e ${all_attachment_string} | gum filter --indicator=">" --header="(${filtered_todo_id}/Attachment) ${filtered_project_name}: ID | Created at | Attachment Name")
+    filtered_attachment_string=$(echo -e ${all_attachment_string} | gum filter --indicator=">" --header="(${filtered_todo_id}/Attachment) ${filtered_project_name}: ID | Created at | Summary")
     filtered_attachment_array=(${filtered_attachment_string})
     filtered_attachment_id=${filtered_attachment_array[0]}
 
@@ -3520,17 +3526,17 @@ function attachment_edit_pjtodo() {
     project_id_edit=${all_attachment_array["${filtered_attachment_id},project_id"]}
     todo_id_edit=${all_attachment_array["${filtered_attachment_id},todo_id"]}
     created_at_edit=${all_attachment_array["${filtered_attachment_id},created_at"]}
-    attachment_name_edit=${all_attachment_array["${filtered_attachment_id},attachment_name"]}
+    summary_edit=${all_attachment_array["${filtered_attachment_id},summary"]}
     description_edit=${all_attachment_array["${filtered_attachment_id},description"]}
     rclone_name_edit=${all_attachment_array["${filtered_attachment_id},rclone_name"]}
     rclone_path_edit=${all_attachment_array["${filtered_attachment_id},rclone_path"]}
 
     echo "Edit ToDo Attachment ->"
     created_at_input=$(escapejc "$(gum input --header="Enter Attachment Create Date" --placeholder="Write Attachment Create Date" --value="${created_at_edit}")")
-    attachment_name_input=$(escapejc "$(gum input --header="Enter Attachment Name" --placeholder="Write Attachment Name" --value="${attachment_name_edit}")")
+    summary_input=$(escapejc "$(gum input --header="Enter Attachment Name" --placeholder="Write Attachment Name" --value="${summary_edit}")")
     description_input=$(escapejc "$(gum write --header="Enter Attachment Description" --placeholder="Write Attachment Description" --value="${description_edit}")")
 
-    update_feedback=$(gum spin --spinner dot --title "Updating ToDo Attachment (ID-${attachment_id_edit})..." --show-output -- curl -L -H "application/json" --silent --no-progress-meter --form "data=\"{\\\"project_id\\\":\\\"${project_id_edit}\\\", \\\"todo_id\\\": \\\"${todo_id_edit}\\\", \\\"created_at\\\":\\\"${created_at_input}\\\", \\\"attachment_name\\\":\\\"${attachment_name_input}\\\", \\\"description\\\":\\\"${description_input}\\\", \\\"rclone_name\\\":\\\"${rclone_name_edit}\\\", \\\"rclone_path\\\":\\\"${rclone_path_edit}\\\"}\"" "${gapps_url}?action=update&table=Attachment&id=${attachment_id_edit}")
+    update_feedback=$(gum spin --spinner dot --title "Updating ToDo Attachment (ID-${attachment_id_edit})..." --show-output -- curl -L -H "application/json" --silent --no-progress-meter --form "data=\"{\\\"project_id\\\":\\\"${project_id_edit}\\\", \\\"todo_id\\\": \\\"${todo_id_edit}\\\", \\\"created_at\\\":\\\"${created_at_input}\\\", \\\"summary\\\":\\\"${summary_input}\\\", \\\"description\\\":\\\"${description_input}\\\", \\\"rclone_name\\\":\\\"${rclone_name_edit}\\\", \\\"rclone_path\\\":\\\"${rclone_path_edit}\\\"}\"" "${gapps_url}?action=update&table=Attachment&id=${attachment_id_edit}")
     echo "${update_feedback}" | jq
 }
 
@@ -3551,7 +3557,7 @@ function attachment_delete_pjtodo() {
     filtered_todo_id=${filtered_todo_array[0]}
 
     store_attachment_pjtodo 'view' ${filtered_project_id} ${filtered_todo_id}
-    filtered_attachment_string=$(echo -e ${all_attachment_string} | gum filter --indicator=">" --header="(${filtered_todo_id}/Attachment) ${filtered_project_name}: ID | Created at | Attachment Name")
+    filtered_attachment_string=$(echo -e ${all_attachment_string} | gum filter --indicator=">" --header="(${filtered_todo_id}/Attachment) ${filtered_project_name}: ID | Created at | Summary")
     filtered_attachment_array=(${filtered_attachment_string})
     filtered_attachment_id=${filtered_attachment_array[0]}
 
@@ -3559,7 +3565,7 @@ function attachment_delete_pjtodo() {
     project_id_attach=${all_attachment_array["${filtered_attachment_id},project_id"]}
     todo_id_attach=${all_attachment_array["${filtered_attachment_id},todo_id"]}
     attachment_created_at=${all_attachment_array["${filtered_attachment_id},created_at"]}
-    attachment_name=${all_attachment_array["${filtered_attachment_id},attachment_name"]}
+    attachment_summary=${all_attachment_array["${filtered_attachment_id},summary"]}
     attachment_description=${all_attachment_array["${filtered_attachment_id},description"]}
     attachment_rclone_name=${all_attachment_array["${filtered_attachment_id},rclone_name"]}
     attachment_rclone_path=${all_attachment_array["${filtered_attachment_id},rclone_path"]}
@@ -3587,7 +3593,7 @@ function attachment_delete_pjtodo() {
     echo "ToDo Attachment Details ->"
     show_attachment="KEY\tVALUE\n"
     show_attachment+="ID\t${attachment_id}\n"
-    show_attachment+="Attachment Name\t${attachment_name}\n"
+    show_attachment+="Attachment Name\t${attachment_summary}\n"
     show_attachment+="Created at\t${todo_created_at}\n"
     show_attachment+="Rclone Name\t${attachment_rclone_name}\n"
     show_attachment+="Rclone Path\t${attachment_rclone_path}\n"
@@ -3599,6 +3605,8 @@ function attachment_delete_pjtodo() {
     then
         delete_feedback=$(gum spin --spinner dot --title "Deleting ToDo Attachment (ID-${attachment_id_delete})..." --show-output -- curl -L -H "application/json" -d '' "${gapps_url}?action=delete&table=Attachment&id=${attachment_id_delete}")
         echo "${delete_feedback}" | jq
+
+        rclone deletefile "${attachment_rclone_name}${attachment_rclone_path}" --verbose
     fi
 }
 
