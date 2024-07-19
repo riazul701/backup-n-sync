@@ -4017,12 +4017,11 @@ function db_restore_dbsync() {
   fi
   
   read -p "Do you want to restore database '${db_restore_folder}/${db_file_restore}' (yes-restore-db/no): `echo $'\n> '`" confirm_db_restore
-  if [[ ${confirm_db_restore} == 'yes-restore-db'  ]]
+  read -p "Are you sure to restore database (sure-about-restore/no): `echo $'\n> '`" sure_db_restore
+  if [[ ( ${confirm_db_restore} != 'yes-restore-db' ) && ( ${sure_db_restore} != 'sure-about-restore' ) ]]
   then
-    echo ''
-  else
     echo "DB-Sync: You rejected to restore database."
-    exit
+    exit   
   fi
   
   if [[ ${development_env} == 'xampp' ]]
@@ -4206,8 +4205,9 @@ function db_restore_dbackup() {
     echo "DBackup: Database sql file does not exist at: '${db_restore_file_path}'"
     exit
   fi
-  read -p "Do you want to restore DB '${db_restore_file_path}'? (yes/no) `echo $'\n> '`" restore_confirm
-  if [[ "${restore_confirm}" != 'yes' ]]
+  read -p "Do you want to restore database '${db_restore_file_path}'? (yes-restore-db/no) `echo $'\n> '`" db_restore_confirm
+  read -p "Are you sure to restore database (sure-about-restore/no): `echo $'\n> '`" db_restore_sure
+  if [[ ( ${db_restore_confirm} != 'yes-restore-db' ) && ( ${db_restore_sure} != 'sure-about-restore' ) ]]
   then
     echo "DBackup: You have rejected to restore database!"
     exit
