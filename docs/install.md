@@ -205,7 +205,7 @@ sudo apt update && sudo apt install gum
 # Move To Path
 
 * Linux: `sudo cp jjk /usr/local/bin/jjk`
-* Windows (Git-Bash): `sudo cp jjk /usr/bin/jjk`
+* Windows (Git-Bash): `sudo cp jjk /usr/bin/jjk` [In Windows-OS Git-Bash `/usr/local/bin/jjk` path make some issues. Different dependency executables do not work properly from inside script.]
 
 # References
 
